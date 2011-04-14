@@ -6,6 +6,9 @@ to be processed later by a cross assembler
 List of modifications:
 
   Originaly created by Vagelis Blathras
+
+    2011-04-14 [godzil] Version 0.63a
+                  - Make modification to compile under something else than Windows (but keep Windows parts)
   
     2009-02-14 [Mike]   Version 0.63 
 	                    (WIP) The old linked filtered out comments, need to implement this feature as well
@@ -52,14 +55,19 @@ List of modifications:
 
 #include "common.h"
 
+#ifdef __WINDOWS__
 // Disable the warning C4706 -> assignment within conditional expression
 // Allow us to use Warning level 4 instead of level 3
 #pragma warning( disable : 4706)
 #pragma warning( disable : 4786)	// Debug symbols thing
+#endif
 
 #include <vector>
 #include <string>
 #include <set>
+
+/* TODO: verify existence of this include under standard linux, or else prefix it for MacOSX, needed for basename */
+#include <libgen.h>
 
 #define NB_ARG	2
 
@@ -435,19 +443,20 @@ int parseline(const std::string cInputLine)
 
 void outall()
 {
+   /* flushall and fcloseall are not POSIX, and UNIX system automaticaly fflush and fclose all opened file descriptors */
 #ifdef __WINDOWS__
 	flushall();
-#endif
 	fcloseall();
+#endif
 }
 
 //
 // Simple function that prints error message/calls outall. 
 // Simplifies the look of the main program
 //
-void linkerror(char *msg)
+void linkerror(const char *msg)
 {
-	printf(msg);
+	printf("%s", msg);
 	outall();
 }
 
@@ -963,7 +972,7 @@ int main(int argc,char **argv)
 #ifdef __WINDOWS__			
 			_splitpath(gInputFileList[k].m_cFileName.c_str(),0,0,filename,0);
 #else
-         strcpy(filename, basename(gInputFileList[k].m_cFileName.c_str()));
+         strcpy(filename, basename((char *)gInputFileList[k].m_cFileName.c_str()));
 #endif			
 			
 			fprintf(gofile,"#file \"%s\\%s.s\"\r\n",current_directory,filename);

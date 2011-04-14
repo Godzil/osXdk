@@ -269,32 +269,48 @@ struct arena {			/* storage allocation arena: */
 	{ unsigned *q1 = (unsigned *)(p), *q2 = q1 + ((sizeof (t)/sizeof (unsigned))&~(8-1)); \
 	for ( ; q1 < q2; q1 += 8) \
 		q1[0] = q1[1] = q1[2] = q1[3] = q1[4] = q1[5] = q1[6] = q1[7] = 0; \
-	sizeof (t)/sizeof (unsigned)%8 >= 1 ? q1[0] = 0 : 0; \
-	sizeof (t)/sizeof (unsigned)%8 >= 2 ? q1[1] = 0 : 0; \
-	sizeof (t)/sizeof (unsigned)%8 >= 3 ? q1[2] = 0 : 0; \
-	sizeof (t)/sizeof (unsigned)%8 >= 4 ? q1[3] = 0 : 0; \
-	sizeof (t)/sizeof (unsigned)%8 >= 5 ? q1[4] = 0 : 0; \
-	sizeof (t)/sizeof (unsigned)%8 >= 6 ? q1[5] = 0 : 0; \
-	sizeof (t)/sizeof (unsigned)%8 >= 7 ? q1[6] = 0 : 0; \
-	sizeof (t)%sizeof (unsigned) >= 1 ? ((char *)(q1 + sizeof (t)/sizeof (unsigned)%8))[0] = 0 : 0; \
-	sizeof (t)%sizeof (unsigned) >= 2 ? ((char *)(q1 + sizeof (t)/sizeof (unsigned)%8))[1] = 0 : 0; \
-	sizeof (t)%sizeof (unsigned) >= 3 ? ((char *)(q1 + sizeof (t)/sizeof (unsigned)%8))[2] = 0 : 0; \
+	if (sizeof (t)/sizeof (unsigned)%8 >= 1) q1[0] = 0; \
+	if (sizeof (t)/sizeof (unsigned)%8 >= 2) q1[1] = 0; \
+	if (sizeof (t)/sizeof (unsigned)%8 >= 3) q1[2] = 0; \
+	if (sizeof (t)/sizeof (unsigned)%8 >= 4) q1[3] = 0; \
+	if (sizeof (t)/sizeof (unsigned)%8 >= 5) q1[4] = 0; \
+	if (sizeof (t)/sizeof (unsigned)%8 >= 6) q1[5] = 0; \
+	if (sizeof (t)/sizeof (unsigned)%8 >= 7) q1[6] = 0; \
+	if (sizeof (t)%sizeof (unsigned) >= 1)   ((char *)(q1 + sizeof (t)/sizeof (unsigned)%8))[0] = 0; \
+	if (sizeof (t)%sizeof (unsigned) >= 2)   ((char *)(q1 + sizeof (t)/sizeof (unsigned)%8))[1] = 0; \
+	if (sizeof (t)%sizeof (unsigned) >= 3)   ((char *)(q1 + sizeof (t)/sizeof (unsigned)%8))[2] = 0; \
 	}
-typedef struct code *Code;
-struct code {		/* code list entries: */
 
-	enum {
-		Blockbeg, Blockend, Local, Address, Defpoint,
-		Label, Start, Asm, Gen, Jump, Switch } kind;
+typedef struct code *Code;
+struct code
+{		/* code list entries: */
+
+	enum
+	{
+		Blockbeg = 0, 
+		Blockend, 
+		Local, 
+		Address, 
+		Defpoint,
+		Label, 
+		Start, 
+		Asm, 
+		Gen, 
+		Jump, 
+		Switch
+	} kind;
 
 	Code prev;			/* previous code node */
 	Code next;			/* next code node */
-	union {
-		struct {		/* Asm: assembly language */
+	union
+	{
+		struct
+		{		/* Asm: assembly language */
 			char *code;		/* assembly code */
 			Symbol *argv;		/* %name arguments */
 		} acode;
-		struct {		/* Blockbeg: */
+		struct
+		{		/* Blockbeg: */
 			Code prev;		/* previous Blockbeg */
 			short bnumber;		/* block number */
 			short level;		/* block level */
@@ -303,17 +319,20 @@ struct code {		/* code list entries: */
 			Env x;			/* value filled in by blockbeg() */
 		} block;
 		Symbol var;		/* Local: local variable */
-		struct {		/* Address: */
+		struct
+		{		/* Address: */
 			Symbol sym;		/* created symbol */
 			Symbol base;		/* local or parameter */
 			int offset;		/* offset from sym */
 		} addr;
-		struct {		/* Defpoint: execution point */
+		struct
+		{		/* Defpoint: execution point */
 			Coordinate src;		/* source location */
 			int point;		/* execution point number */
 		} point;
 		Node node;		/* Label, Gen, Jump: a dag node */
-		struct swselect {	/* Switch: swselect data */
+		struct swselect
+		{	/* Switch: swselect data */
 			Symbol sym;		/* temporary holding value */
 			Symbol table;		/* branch table */
 			Symbol deflab;		/* default label */
@@ -323,12 +342,15 @@ struct code {		/* code list entries: */
 		} swtch;
 	} u;
 };
-struct tynode {		/* type nodes: */
+
+struct tynode
+{		/* type nodes: */
 	Typeop op;		/* operator */
 	short align;		/* alignment in storage units */
 	int size;		/* size in storage units */
 	Type type;		/* operand */
-	union {
+	union
+	{
 		Symbol sym;		/* associated symbol */
 		Type *proto;		/* function prototype */
 		Generic ptr;
@@ -338,13 +360,16 @@ struct tynode {		/* type nodes: */
 	Ytype y;
 #endif
 };
-struct field {		/* struct/union fields: */
+
+struct field
+{		/* struct/union fields: */
 	char *name;		/* field name */
 	Type type;		/* data type */
 	int offset;		/* field offset */
 	short from, to;		/* bit fields: bits from..to */
 	Field link;		/* next field in this type */
 };
+
 #define fieldsize(p) ((p)->to - (p)->from)
 #ifdef LITTLE_ENDIAN
 #define fieldright(p) (p)->from

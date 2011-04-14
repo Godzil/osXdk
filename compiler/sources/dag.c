@@ -27,7 +27,8 @@ dclproto(static Node undag1,(Node, Node));
 #endif
 
 /* addlocal - add local p to list of locals for the current block */
-void addlocal(p) Symbol p; {
+void addlocal(Symbol p)
+{
 	if (!p->defined) {
 		code(Local)->u.var = p;
 		p->defined = 1;
@@ -36,7 +37,8 @@ void addlocal(p) Symbol p; {
 }
 
 /* code - allocate a code node of kind and append to the code list */
-Code code(kind) {
+Code code(kind)
+{
 	Code cp;
 
 	if (kind > Label) {
@@ -59,9 +61,11 @@ static struct dag *dagnode(op, l, r, sym) Node l, r; Symbol sym; {
 
 	BZERO(p, struct dag);
 	p->node.op = op;
-	if (p->node.kids[0] = l)
+   p->node.kids[0] = l;
+	if (l)
 		++l->count;
-	if (p->node.kids[1] = r)
+   p->node.kids[1] = r;
+   if (r)
 		++r->count;
 	p->node.syms[0] = sym;
 	return p;
@@ -125,6 +129,11 @@ void emitcode() {
 			}
 			break;
 			}
+
+		case Address:
+		case Start:
+      default:
+         break;
 		}
 	src = save;
 }
@@ -292,7 +301,8 @@ Node listnodes(tp, tlab, flab) Tree tp; {
 		trash(0);
 		listnodes(tp->kids[0], 0, flab = genlabel(2));
 		trash(0);
-		if (q = tp->kids[1]) 
+      q = tp->kids[1];
+      if (q) 
 		{
 			assert(q->op == RIGHT);
 			listnodes(q->kids[0], 0, 0);
@@ -303,6 +313,7 @@ Node listnodes(tp, tlab, flab) Tree tp; {
 			}
 			trash(0);
 		}
+		
 		if (q && q->kids[1]) 
 		{
 			list(jump(flab + 1));
@@ -406,22 +417,35 @@ Node listnodes(tp, tlab, flab) Tree tp; {
 		listnodes(tp->kids[1], 0, 0);
 #endif
 		return 0;
-	case EQ: case NE: case GT: case GE: case LE: case LT: {
+	case EQ: case NE: case GT: case GE: case LE: case LT:
+	{
 		int lab;
 		assert(tp->u.sym == 0);
 		assert(errcnt || tlab || flab);
-		if (lab = flab) {
+      lab = flab;
+		if (lab)
+		{
 			assert(tlab == 0);
-			switch (op) {
+			switch (op)
+			{
 			case EQ: op = NE + optype(tp->op); break;
 			case NE: op = EQ + optype(tp->op); break;
 			case GT: op = LE + optype(tp->op); break;
 			case LT: op = GE + optype(tp->op); break;
 			case GE: op = LT + optype(tp->op); break;
 			case LE: op = GT + optype(tp->op); break;
+         default: break;
 			}
-		} else if (lab = tlab)
-			op = tp->op;
+		} 
+		else 
+		{
+         lab = tlab;
+		   if (lab)
+		   {
+			   op = tp->op;
+		   }
+		}
+		
 		l = listnodes(tp->kids[0], 0, 0);
 		r = listnodes(tp->kids[1], 0, 0);
 		p = newnode(op, l, r, findlabel(lab));
@@ -590,16 +614,26 @@ dclproto(static void printnode,(Node, int, int));
 /* printdag - print dag p on fd, or the node list if p == 0 */
 void printdag(p, fd) Node p; {
 	printed(0);
-	if (p == 0) {
-		if (p = nodelist)
-			do {
+	if (p == 0)
+	{
+      p = nodelist;
+		if (p)
+		{
+			do
+			{
 				p = p->link;
 				printdag1(p, fd, 0);
 			} while (p != nodelist);
-	} else if (*printed(nodeid((Tree)p)))
+		}
+	} 
+	else if (*printed(nodeid((Tree)p)))
+	{
 		fprint(fd, "node'%d printed above\n", nodeid((Tree)p));
+	}
 	else
+	{
 		printdag1(p, fd, 0);
+	}
 }
 
 /* printdag1 - recursively print dag p */
@@ -645,34 +679,54 @@ static void remove_node(p) Node p;
 }
 
 /* reset - clear the dag */
-static void reset() {
+static void reset()
+{
 	BZERO(buckets, struct dag *[NBUCKETS]);
 	nodecount = 0;
 }
 
 /* trash - preclude future links to rvalue of p or all values */
-static void trash(p) Node p; {
-	if (p) {
+static void trash(p) Node p;
+{
+	if (p)
+	{
 		register int i;
 		register struct dag *q, **r;
 		for (i = 0; i < NBUCKETS; i++)
-			for (r = &buckets[i]; q = *r; )
-				if (generic(q->node.op) == INDIR && (!isaddrop(q->node.kids[0]->op)
-				|| q->node.kids[0]->syms[0] == p->syms[0])) {
+		{
+			for (r = &buckets[i]; (q = *r); )
+			{
+				if ( generic(q->node.op) == INDIR &&
+				     ( (!isaddrop(q->node.kids[0]->op)) ||
+				       (q->node.kids[0]->syms[0] == p->syms[0]) ) )
+				{
 					*r = q->hlink;
 					--nodecount;
-				} else
+				} 
+				else
+				{
 					r = &q->hlink;
-	} else if (nodecount > 0)
+				}
+			}
+		}
+	} 
+	else if (nodecount > 0)
+	{
 		reset();
+	}
 }
 
 /* typestab - emit stab entries for p */
-static void typestab(p, cl) Symbol p; Generic cl; {
+static void typestab(p, cl) Symbol p; Generic cl;
+{
 	if (!isfunc(p->type) && (p->sclass == EXTERN || p->sclass == STATIC))
+	{
 		stabsym(p);
-	else if (p->sclass == TYPEDEF || p->sclass == 0)
+	}
+	else if ( (p->sclass == TYPEDEF) ||  (p->sclass == 0) )
+	{
 		stabtype(p);
+	}
 }
 
 #ifdef NODAG
