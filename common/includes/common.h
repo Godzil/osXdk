@@ -154,5 +154,28 @@ private:
 	std::string		m_cLabelName;
 };
 
+#ifndef __WINDOWS__
+
+#define getch getchar
+#include <sys/types.h>
+
+#define _open open
+#define _close close
+#define _read read
+#define _write write
+#define _unlink unlink
+
+#define O_BINARY 0
+#define _O_TRUNC O_TRUNC
+#define _O_CREAT O_CREAT
+#define _S_IREAD S_IREAD
+#define _S_IWRITE S_IWRITE	
+
+#define _MAX_PATH 512
+
+#define stricmp strcasecmp
+#define memicmp memcmp
+
+#endif
 
 #endif // _COMMON_H_

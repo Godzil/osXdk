@@ -46,7 +46,9 @@ List of modifications:
 #include <string.h>
 #include <memory.h>
 #include <ctype.h>
+#ifdef __WINDOWS__
 #include <direct.h>
+#endif
 
 #include "common.h"
 
@@ -433,7 +435,9 @@ int parseline(const std::string cInputLine)
 
 void outall()
 {
+#ifdef __WINDOWS__
 	flushall();
+#endif
 	fcloseall();
 }
 
@@ -953,9 +957,14 @@ int main(int argc,char **argv)
 		{
 			char current_directory[_MAX_PATH+1];
 			char filename[_MAX_PATH];
+			char *ret;
 			
-			getcwd(current_directory,_MAX_PATH);
+			ret = getcwd(current_directory,_MAX_PATH);
+#ifdef __WINDOWS__			
 			_splitpath(gInputFileList[k].m_cFileName.c_str(),0,0,filename,0);
+#else
+         strcpy(filename, basename(gInputFileList[k].m_cFileName.c_str()));
+#endif			
 			
 			fprintf(gofile,"#file \"%s\\%s.s\"\r\n",current_directory,filename);
 		}

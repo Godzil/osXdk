@@ -252,7 +252,7 @@ struct callsite {
 	char *file, *name;
 	union coordinate {
 		struct {
-#ifdef LITTLE_ENDIAN
+#ifdef CC_LITTLE_ENDIAN
 			unsigned int y:16,x:10,index:6;
 #else
 			unsigned int index:6,x:10,y:16;

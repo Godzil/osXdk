@@ -1,5 +1,8 @@
 /* C compiler: definitions */
 
+#ifndef C_H
+#define C_H
+
 /* default sizes */
 #define MAXLINE   512		/* maximum output line length */
 #define MAXTOKEN   32		/* maximum token length */
@@ -208,6 +211,7 @@ dclproto(extern double strtod,(char *, char **));
 #endif
 
 
+#ifdef __WINDOWS__
 /* C library */
 int atoi(char *);
 int close(int);
@@ -224,7 +228,9 @@ unsigned strlen(const char *);
 //char *strncmp(const char *, const char *, unsigned);
 //char *strncpy(char *, const char *, unsigned);
 int write(int, char *, int);
+#else
 
+#endif
 
 struct node {		/* dag nodes: */
 	Opcode op;		/* operator */
@@ -600,3 +606,5 @@ extern Type unsignedshort;
 extern Type unsignedtype;
 extern Type voidptype;
 extern Type voidtype;
+
+#endif	

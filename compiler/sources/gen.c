@@ -3,13 +3,17 @@ char *version="/* 16bit code V1.29 by F.Frances */\n";
 
 #include "c.h"
 
+#ifdef __WINDOWS__
+#define strdup _strdup
+#endif
+
 static int localsize;		/* max size of locals */
 static int argoffset;		/* current stack position */
 static int offset;		/* current local size */
 static int tmpsize;		/* max size of temporary variables */
 static int nbregs;		/* number of used registers */
 static unsigned busy;		/* busy&(1<<t) == 1 if tmp t is used */
-static char *fname;		/* current function name */
+static char *funame;		/* current function name */
 static char *callname;		/* current function called name */
 static char *NamePrefix;	/* Prefix for all local names */
 static int omit_frame;		/* if no params and no locals */
@@ -57,7 +61,7 @@ void progbeg(int argc,char *argv[])
 		{
 			char *ptr;
 
-			NamePrefix=_strdup(argv[i]+2);
+			NamePrefix=strdup(argv[i]+2);
 			do
 			{
 				ptr=strpbrk(NamePrefix,"-");
@@ -271,7 +275,7 @@ void function(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
 {
 	int i;
 
-	localsize=offset=tmpsize=nbregs=0; fname=f->x.name;
+	localsize=offset=tmpsize=nbregs=0; funame=f->x.name;
 	for (i=8;i<32;i++) temp[i]->x.name="******";
 	for (i = 0; caller[i] && callee[i]; i++) 
 	{
@@ -290,7 +294,7 @@ void function(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
 	busy=localsize=0; offset=6;
 	gencode(caller,callee);
 	omit_frame=(i==0 && localsize==6);
-	print("%s\n",fname);
+	print("%s\n",funame);
 	if (optimizelevel>1 && omit_frame && nbregs==0)
 		;
 	else print("\tENTER(%d,%d)\n",nbregs,localsize);

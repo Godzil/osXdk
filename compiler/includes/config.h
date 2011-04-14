@@ -12,7 +12,7 @@
 #define STRUCT_ALIGN     1
 
 #define LEFT_TO_RIGHT	 /* evaluate args left-to-right */
-#define LITTLE_ENDIAN	 /* right-to-left bit fields */
+#define CC_LITTLE_ENDIAN	 /* right-to-left bit fields */
 #define JUMP_ON_RETURN	0
 
 typedef struct {

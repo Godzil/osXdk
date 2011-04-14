@@ -227,7 +227,7 @@ static int initfields(p, q) Field p, q; {
 			p = p->link;
 		} while (t == ',' && (t = gettok()));
 		if (q && (n = q->offset - p->offset) < unsignedtype->size)
-#ifdef LITTLE_ENDIAN
+#ifdef CC_LITTLE_ENDIAN
 			for (i = 0; i < n; i++) {
 				genasgn(retype(e, chartype), current);
 				e = (*opnode[RSHIFT])(RSH, e, constnode(8, inttype));
@@ -262,7 +262,7 @@ static int initfields(p, q) Field p, q; {
 	n = (n + 7)/8;
 	for (i = 0; i < n; i++) {
 		Value v;
-#ifdef LITTLE_ENDIAN
+#ifdef CC_LITTLE_ENDIAN
 		v.uc = bits;
 		bits >>= 8;
 #else

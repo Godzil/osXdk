@@ -5,8 +5,12 @@
 #include <memory.h>
 #include <stdlib.h>
 #include <stdio.h>
+
+#ifdef __WINDOWS__
 #include <conio.h>
 #include <io.h>
+#endif
+
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <stdarg.h>
@@ -62,6 +66,7 @@ void ShowError(const char *message)
 
 bool LoadFile(const char* pcFileName,void* &pcBuffer,size_t &cBufferSize)
 {
+#ifdef __WINDOWS__
 	// get the size of the file
 	struct _finddata_t 	file_info;
 
@@ -69,14 +74,22 @@ bool LoadFile(const char* pcFileName,void* &pcBuffer,size_t &cBufferSize)
 	{
 		return false;
 	}
+   cBufferSize=file_info.size;
+#else
+  struct stat fileStat;
+#endif
 
 	// open the file
-	cBufferSize=file_info.size;
 	int nHandle=_open(pcFileName,O_BINARY|O_RDONLY,0);
-    if (nHandle==-1)
+   if (nHandle==-1)
 	{
 		return false;
 	}
+
+#ifndef __WINDOWS__
+   fstat(nHandle, &fileStat);  
+  	cBufferSize = fileStat.st_size;
+#endif
 
 	// allocate some memory
 	pcBuffer=malloc(cBufferSize+1);
