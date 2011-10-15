@@ -4,23 +4,23 @@
 
 static int curseg;		/* current segment */
 static struct structexp {	/* current structure expression: */
-	Symbol var;			/* temporary variable */
+	sSymbol_t var;			/* temporary variable */
 	int off;			/* offset in var */
-	Tree tree;			/* evolving tree */
+	sTree_t tree;			/* evolving tree */
 	struct structexp *link;		/* outer structure expression */
 } *current;
-dclproto(static int genasgn,(Tree, struct structexp *));
-dclproto(static void genchar,(Symbol, struct structexp *));
+dclproto(static int genasgn,(sTree_t, struct structexp *));
+dclproto(static void genchar,(sSymbol_t, struct structexp *));
 dclproto(static void genspace,(int, struct structexp *));
-dclproto(static int initarray,(int, Type, int));
-dclproto(static int initchar,(int, Type));
+dclproto(static int initarray,(int, sType_t, int));
+dclproto(static int initchar,(int, sType_t));
 dclproto(static void initend,(int, char []));
-dclproto(static int initfields,(Field, Field));
-dclproto(static int initstruct,(int, Type, int));
-dclproto(static Tree initvalue,(Type));
+dclproto(static int initfields,(sField_t, sField_t));
+dclproto(static int initstruct,(int, sType_t, int));
+dclproto(static sTree_t initvalue,(sType_t));
 
 /* defglobal - define a global or static variable in segment seg */
-void defglobal(p, seg) Symbol p; {
+void defglobal(p, seg) sSymbol_t p; {
 	swtoseg(p->u.seg = seg);
 	if (p->sclass != STATIC)
 		export(p);
@@ -32,17 +32,18 @@ void defglobal(p, seg) Symbol p; {
 }
 
 /* defpointer - initialize a pointer to p or to 0 if p==0 */
-void defpointer(p) Symbol p; {
+void defpointer(p) sSymbol_t p; {
 	if (p)
 		defaddress(p);
 	else {
-		Value v;
+		uValue_t v;
 		defconst(P, (v.p = 0, v));
 	}
 }
 
 /* doconst - generate a variable for an out-of-line constant */
-void doconst(p, cl) Symbol p; Generic cl; {
+void doconst(sSymbol_t p, void *cl)
+{
 	if (p->u.c.loc) {
 		defglobal(p->u.c.loc, p->u.c.loc->u.seg ? p->u.c.loc->u.seg : LIT);
 		if (isarray(p->type))
@@ -55,8 +56,8 @@ void doconst(p, cl) Symbol p; Generic cl; {
 }
 
 /* genasgn - append tree for assignment of e to evolving structure expression in *sp */
-static int genasgn(e, sp) Tree e; struct structexp *sp; {
-	Tree p;
+static int genasgn(e, sp) sTree_t e; struct structexp *sp; {
+	sTree_t p;
 
 	sp->off = roundup(sp->off, e->type->size);
 	p = simplify(ADD+P, ptr(e->type), lvalue(idnode(sp->var)), constnode(sp->off, inttype));
@@ -71,16 +72,16 @@ static int genasgn(e, sp) Tree e; struct structexp *sp; {
 }
 
 /* genchar - generate assignment of string constant p to array in *sp */
-static void genchar(p, sp) Symbol p; struct structexp *sp; {
+static void genchar(p, sp) sSymbol_t p; struct structexp *sp; {
 	char *s = p->u.c.v.p;
 	int n;
 
 	for (n = p->type->size; n > 0 && sp->off%inttype->align; n--)
 		genasgn(constnode((*s++)&0377, chartype), sp);
 	if (n > 0) {
-		static Value v;
-		Type ty = array(chartype, p->type->size - (s - p->u.c.v.p), 0);
-		Tree e = tree(ADDRG+P, atop(ty), 0, 0);
+		static uValue_t v;
+		sType_t ty = array(chartype, p->type->size - (s - p->u.c.v.p), 0);
+		sTree_t e = tree(ADDRG+P, atop(ty), 0, 0);
 		v.p = stringn(s, ty->size);
 		p = constant(ty, v);
 		if (p->u.c.loc == 0)
@@ -93,7 +94,8 @@ static void genchar(p, sp) Symbol p; struct structexp *sp; {
 }
 
 /* genconst - generate/check constant expression e; return size */
-int genconst(e, def) Tree e; {
+int genconst(sTree_t e, int def)
+{
 	for (;;)
 		switch (generic(e->op)) {
 		case ADDRG:
@@ -139,8 +141,8 @@ static void genspace(n, sp) struct structexp *sp; {
 		for ( ; n > 0; n--)
 			genasgn(constnode(0, chartype), sp);
 	else {
-		Tree e;
-		static Symbol zeros;
+		sTree_t e;
+		static sSymbol_t zeros;
 		if (zeros == 0) {
 			zeros = install(stringd(genlabel(1)), &globals, 1);
 			zeros->sclass = STATIC;
@@ -157,7 +159,7 @@ static void genspace(n, sp) struct structexp *sp; {
 }
 
 /* initarray - initialize array of ty of <= len bytes; if len == 0, go to } */
-static int initarray(len, ty, lev) Type ty; {
+static int initarray(len, ty, lev) sType_t ty; {
 	int n = 0;
 
 	do {
@@ -171,14 +173,14 @@ static int initarray(len, ty, lev) Type ty; {
 }
 
 /* initchar - initialize array of <= len ty characters; if len == 0, go to } */
-static int initchar(len, ty) Type ty; {
+static int initchar(len, ty) sType_t ty; {
 	int n = 0;
 	char buf[16], *s = buf;
 
 	do {
 		if (current) {
-			Type aty;
-			Tree e = expr1(0);
+			sType_t aty;
+			sTree_t e = expr1(0);
 			if (aty = assign(ty, e))
 				genasgn(cast(e, aty), current);
 			else
@@ -209,14 +211,14 @@ static void initend(lev, follow) char follow[]; {
 }
 
 /* initfields - initialize <= an unsigned's worth of bit fields in fields p to q */
-static int initfields(p, q) Field p, q; {
+static int initfields(p, q) sField_t p, q; {
 	unsigned int bits = 0;
 	int i, n = 0;
 
 	if (current) {
-		Tree e = constnode(0, unsignedtype);
+		sTree_t e = constnode(0, unsignedtype);
 		do {
-			Tree x = expr1(0);
+			sTree_t x = expr1(0);
 			if (fieldsize(p) < 8*p->type->size)
 				x = (*opnode['&'])(BAND, x,
 					constnode(fieldmask(p), unsignedtype));
@@ -261,7 +263,7 @@ static int initfields(p, q) Field p, q; {
 	} while (t == ',' && (t = gettok()));
 	n = (n + 7)/8;
 	for (i = 0; i < n; i++) {
-		Value v;
+		uValue_t v;
 #ifdef CC_LITTLE_ENDIAN
 		v.uc = bits;
 		bits >>= 8;
@@ -275,8 +277,9 @@ static int initfields(p, q) Field p, q; {
 }
 
 /* initglobal - a new global identifier p, possibly initialized */
-void initglobal(p, flag) Symbol p; {
-	Type ty;
+void initglobal(sSymbol_t p, int flag)
+{
+	sType_t ty;
 
 	if (t == '=' || flag) {
 		if (p->sclass == STATIC) {
@@ -299,10 +302,10 @@ void initglobal(p, flag) Symbol p; {
 }
 
 /* initializer - constexpr | { constexpr ( , constexpr )* [ , ] } */
-Type initializer(ty, lev) Type ty; {
+sType_t initializer(ty, lev) sType_t ty; {
 	int n = 0;
-	Tree e;
-	Type aty;
+	sTree_t e;
+	sType_t aty;
 	static char follow[] = { IF, CHAR, STATIC, 0 };
 
 	ty = unqual(ty);
@@ -416,9 +419,9 @@ Type initializer(ty, lev) Type ty; {
 }
 
 /* initstruct - initialize a struct ty of <= len bytes; if len == 0, go to } */
-static int initstruct(len, ty, lev) Type ty; {
+static int initstruct(len, ty, lev) sType_t ty; {
 	int a, n = 0;
-	Field p = ty->u.sym->u.s.flist;
+	sField_t p = ty->u.sym->u.s.flist;
 
 	do {
 		if (p->offset > n) {
@@ -426,7 +429,7 @@ static int initstruct(len, ty, lev) Type ty; {
 			n += p->offset - n;
 		}
 		if (p->to) {
-			Field q = p;
+			sField_t q = p;
 			while (q->link && q->link->offset == p->offset)
 				q = q->link;
 			n += initfields(p, q->link);
@@ -452,9 +455,9 @@ static int initstruct(len, ty, lev) Type ty; {
 }
 
 /* initvalue - evaluate a constant expression for a value of integer type ty */
-static Tree initvalue(ty) Type ty; {
-	Type aty;
-	Tree e;
+static sTree_t initvalue(ty) sType_t ty; {
+	sType_t aty;
+	sTree_t e;
 
 	needconst++;
 	e = expr1(0);
@@ -474,7 +477,7 @@ static Tree initvalue(ty) Type ty; {
 }
 
 /* structexp - in-line structure expression '{' expr ( , expr )* [ , ] '}' */
-Tree structexp(ty, t1) Type ty; Symbol t1; {
+sTree_t structexp(ty, t1) sType_t ty; sSymbol_t t1; {
 	struct structexp e;
 
 	e.var = t1;

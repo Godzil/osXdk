@@ -19,7 +19,9 @@ Generate an html file representing the memory map of provided files.
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory.h>
+#ifdef __WINDOWS__
 #include <io.h>
+#endif
 #include <fcntl.h>
 #include <sys/stat.h>
 

@@ -2,50 +2,68 @@
 
 #include "c.h"
 
-static struct arena first[] = {
-	0, 0, 0, &first[0], 0,
-	0, 0, 0, &first[1], 0,
+#include <stdlib.h>
+
+static struct arena first[] =
+{
+	{ 0, 0, 0, &first[0], 0, },
+	{ 0, 0, 0, &first[1], 0, }
 };
-Arena permanent = &first[0];	/* permanent storage */
-Arena transient = &first[1];	/* transient storage; released at function end */
-static Arena freearenas;	/* list of free arenas */
+sArena_t permanent = &first[0];	/* permanent storage */
+sArena_t transient = &first[1];	/* transient storage; released at function end */
+static sArena_t freearenas;	/* list of free arenas */
 
 /* allocate - allocate n bytes in arena **p, adding a new arena if necessary */
-char *allocate(n, p) Arena *p; {
-	Arena ap = *p;
+char *allocate(int n, sArena_t *p) {
+	sArena_t ap = *p;
 
 	while (ap->avail + n > ap->limit)
-		if (ap->next) {		/* move to next arena */
+   {
+		if (ap->next)
+      {		/* move to next arena */
 			ap = ap->next;
 			ap->avail = (char *)ap + roundup(sizeof *ap, sizeof (double));
-		} else if (ap->next = freearenas) {
-			freearenas = freearenas->next;
-			ap = ap->next;
-			ap->avail = (char *)ap + roundup(sizeof *ap, sizeof (double));
-			ap->first = (*p)->first;
-			ap->next = 0;
-		} else {		/* allocate a new arena */
-			int m = n + MEMINCR*1024 + roundup(sizeof *ap, sizeof (double));
-			ap->next = (Arena) malloc(m);
-			assert(ap->next && (int)ap->next >= 0);
-			if ((char *)ap->next == ap->limit) /* extend previous arena? */
-				ap->limit = (char *)ap->next + m;
-			else {			/* link to a new arena */
-				ap = ap->next;
-				ap->limit = (char *)ap + m;
-				ap->avail = (char *)ap + roundup(sizeof *ap, sizeof (double));
-			}
-			ap->first = (*p)->first;
-			ap->next = 0;
 		}
+      else
+      {
+         ap->next = freearenas;
+         if (ap->next)
+         {
+            freearenas = freearenas->next;
+            ap = ap->next;
+            ap->avail = (char *)ap + roundup(sizeof *ap, sizeof (double));
+            ap->first = (*p)->first;
+            ap->next = 0;
+         }
+         else
+         {		/* allocate a new arena */
+            int m = n + MEMINCR*1024 + roundup(sizeof *ap, sizeof (double));
+            ap->next = (sArena_t) malloc(m);
+            assert(ap->next && (int)ap->next >= 0);
+            if ((char *)ap->next == ap->limit) /* extend previous arena? */
+            {
+               ap->limit = (char *)ap->next + m;
+            }
+            else
+            {			/* link to a new arena */
+               ap = ap->next;
+               ap->limit = (char *)ap + m;
+               ap->avail = (char *)ap + roundup(sizeof *ap, sizeof (double));
+            }
+            ap->first = (*p)->first;
+            ap->next = 0;
+			}
+		}
+   }
 	*p = ap;
 	ap->avail += n;
 	return ap->avail - n;
 }
 
 /* deallocate - release all space in arena *p, except the first arena; reset *p */
-void deallocate(p) Arena *p; {
-	Arena first = (*p)->first;
+void deallocate(sArena_t *p)
+{
+	sArena_t first = (*p)->first;
 
 	(*p)->next = freearenas;
 	freearenas = first->next;
@@ -55,9 +73,9 @@ void deallocate(p) Arena *p; {
 
 
 /* cvtconst - convert a constant tree into tree for a global variable */
-Tree cvtconst(p) Tree p; {
-	Symbol q = constant(p->type, p->u.v);
-	Tree e;
+sTree_t cvtconst(p) sTree_t p; {
+	sSymbol_t q = constant(p->type, p->u.v);
+	sTree_t e;
 
 	if (q->u.c.loc == 0)
 		q->u.c.loc = genident(STATIC, p->type, GLOBAL);
@@ -70,7 +88,7 @@ Tree cvtconst(p) Tree p; {
 }
 
 /* hascall - does tree p contain a CALL? */
-int hascall(p) Tree p; {
+int hascall(p) sTree_t p; {
 	if (p == 0)
 		return 0;
 	if (generic(p->op) == CALL
@@ -114,13 +132,13 @@ char *opname(op) {
 int ntree = 0;			/* next free tree in trees */
 static struct tree trees[100];	/* default allocation area for trees */
 
-Tree tree(op, type, left, right) Type type; Tree left, right; {
-	register Tree p;
+sTree_t tree(op, type, left, right) sType_t type; sTree_t left, right; {
+	register sTree_t p;
 
 	if (ntree < sizeof trees/sizeof trees[0])
 		p = &trees[ntree++];
 	else
-		p = (Tree)talloc(sizeof *p);
+		p = (sTree_t)talloc(sizeof *p);
 	p->op = op;
 	p->type = type;
 	p->kids[0] = left;
@@ -131,8 +149,8 @@ Tree tree(op, type, left, right) Type type; Tree left, right; {
 }
 
 /* retype - return a copy of tree p with type field = ty */
-Tree retype(p, ty) Tree p; Type ty;{
-	Tree q;
+sTree_t retype(p, ty) sTree_t p; sType_t ty;{
+	sTree_t q;
 
 	if (p->type == ty)
 		return p;
@@ -142,12 +160,12 @@ Tree retype(p, ty) Tree p; Type ty;{
 }
 
 /* root - tree p will be a root; remove unnecessary temporaries */
-Tree root(p) Tree p; {
+sTree_t root(p) sTree_t p; {
 	if (p == 0)
 		return p;
 	switch (generic(p->op)) {
 	case COND: {
-		Tree q = p->kids[1];
+		sTree_t q = p->kids[1];
 		assert(q && q->op == RIGHT);
 		if (p->u.sym && q->kids[0] && generic(q->kids[0]->op) == ASGN)
 			q->kids[0] = root(q->kids[0]->kids[1]);
@@ -210,9 +228,9 @@ Tree root(p) Tree p; {
 }
 
 /* texpr - parse an expression via f(tok), allocating trees in transient area */
-Tree texpr(f, tok) dclproto(Tree (*f),(int)); {
+sTree_t texpr(f, tok) dclproto(sTree_t (*f),(int)); {
 	int n = ntree;
-	Tree p;
+	sTree_t p;
 
 	ntree = sizeof trees/sizeof trees[0];
 	p = (*f)(tok);
@@ -230,13 +248,13 @@ void tfree() {
 static int nid = 1;		/* identifies trees & nodes in debugging output */
 static struct nodeid {
 	int printed;
-	Tree node;
+	sTree_t node;
 } ids[500];			/* if ids[i].node == p, then p's id is i */
 
-dclproto(static void printtree1,(Tree, int, int));
+dclproto(static void printtree1,(sTree_t, int, int));
 
 /* nodeid - lookup id for tree or node p */
-int nodeid(p) Tree p; {
+int nodeid(p) sTree_t p; {
 	int i = 1;
 
 	ids[nid].node = p;
@@ -256,13 +274,13 @@ int *printed(id) {
 }
 
 /* printtree - print tree p on fd */
-void printtree(p, fd) Tree p; {
+void printtree(p, fd) sTree_t p; {
 	(void)printed(0);
 	printtree1(p, fd, 1);
 }
 
 /* printtree1 - recursively print tree p */
-static void printtree1(p, fd, lev) Tree p; {
+static void printtree1(p, fd, lev) sTree_t p; {
 	int i;
 	static char blanks[] = "                                         ";
 

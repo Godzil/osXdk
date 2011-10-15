@@ -1,5 +1,5 @@
 ###
-# osXdk: Compiler
+# osXdk: The Crossplatform Oric Software Development Kit
 #
 # CMakeFile Author: Manoel Trapier <godzil@godzil.net>
 
@@ -12,5 +12,11 @@ project (m6502-oric-osXdk)
 add_subdirectory(compiler)
 add_subdirectory(common)
 add_subdirectory(link65)
-#add_directory(opt65)
-#add_directory(xa)
+add_subdirectory(opt65)
+add_subdirectory(xa)
+
+
+#tools (with oric- prefix)
+add_subdirectory(bas2tap)
+add_subdirectory(bin2txt)
+add_subdirectory(MemMap)

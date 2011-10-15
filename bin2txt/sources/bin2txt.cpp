@@ -23,7 +23,9 @@ First version Mick: Fri  13/09/96  16:16:14
 #include <stdarg.h>
 #include <ctype.h>
 #include <fcntl.h>
+#ifdef __WINDOWS__
 #include <io.h>
+#endif
 #include <string.h>
 
 #include "infos.h"
@@ -127,7 +129,7 @@ int main(int argc,char *argv[])
 	{
 		ShowError("Unable to load the source file");
 	}
-	printf("Size Read:%d\n",file_size);
+	printf("Size Read:%lu\n", file_size);
 	unsigned char *BigBuffer=(unsigned char*)ptr_buffer_void;
 
 	std::string cDestString;

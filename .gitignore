@@ -1,4 +1,4 @@
 *.o
-/build
+/build*
 /cc65
 .DS_Store

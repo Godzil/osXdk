@@ -7,7 +7,7 @@
 /* structs and defs */
 
 #include "xah.h"
-#include "xar.h"
+#include "xa_refactor.h"
 #include "xa.h"
 
 // externals
@@ -327,7 +327,7 @@ int SymbolEntry::DefineSymbol(char *ptr_src,int block_level)
 	}
 	strncpy(label_name,ptr_src,j);
 	label_name[j]=0;
-	ErrorCode er=E_OK;
+    //ErrorCode er=E_OK;
 	value				=0;
 	label_name_lenght	=j;
 	ptr_label_name		=label_name;

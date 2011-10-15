@@ -22,5 +22,6 @@ include_directories(includes)
 include_directories(../common/includes)
 
 add_executable(m6502-oric-none-ld sources/Link65.cpp)
+
 target_link_libraries(m6502-oric-none-ld osxdk_common)
 

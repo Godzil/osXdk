@@ -9,7 +9,7 @@
 #include "xah.h"
 #include "xah2.h"
 
-#include "xar.h"
+#include "xa_refactor.h"
 #include "xa.h"
 #include "xam.h"
 #include "xal.h"
@@ -21,7 +21,7 @@
 #define VALBEF    6
 
 
-static char *Preprocessor_CommandList[]=
+static const char *Preprocessor_CommandList[]=
 { 
 	"echo",
 	"include",

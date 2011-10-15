@@ -631,7 +631,8 @@ int resolve_abs(char *a)
 
 int parse_line(char *a, line *p)
 {
-  static int i,j,x,y;
+  static int i,j,x;
+  //,y;
 
   p->tok=null_tok;
   p->dep=0;
@@ -2053,10 +2054,12 @@ void add_line(line *p)
 # endif
 }
 
-optimize_block()
+void optimize_block(void)
 {
+# ifdef debug
   int i;
-
+# endif
+   
   if (blkbuf_len<1) return;
   
   dbmsg("<BLOCK>\n");
@@ -2108,7 +2111,7 @@ optimize_block()
 
 /*********************************************************************/
 
-main(int argc, char **argv)
+int main(int argc, char *argv[])
 {
   char linebuf[line_len];
   line tmp;
@@ -2187,4 +2190,5 @@ main(int argc, char **argv)
   }
 
   fclose(fin);
+  return 0;
 }

@@ -2,39 +2,39 @@
 
 #include "c.h"
 
-Type chartype;			/* char */
-Type doubletype;		/* double */
-Type floattype;			/* float */
-Type inttype;			/* signed int */
-Type longdouble;		/* long double */
-Type longtype;			/* long */
-Type shorttype;			/* signed short int */
-Type signedchar;		/* signed char */
-Type unsignedchar;		/* unsigned char */
-Type unsignedlong;		/* unsigned long int */
-Type unsignedshort;		/* unsigned short int */
-Type unsignedtype;		/* unsigned int */
-Type voidptype;			/* void* */
-Type voidtype;			/* basic types: void */
+sType_t chartype;			/* char */
+sType_t doubletype;		/* double */
+sType_t floattype;			/* float */
+sType_t inttype;			/* signed int */
+sType_t longdouble;		/* long double */
+sType_t longtype;			/* long */
+sType_t shorttype;			/* signed short int */
+sType_t signedchar;		/* signed char */
+sType_t unsignedchar;		/* unsigned char */
+sType_t unsignedlong;		/* unsigned long int */
+sType_t unsignedshort;		/* unsigned short int */
+sType_t unsignedtype;		/* unsigned int */
+sType_t voidptype;			/* void* */
+sType_t voidtype;			/* basic types: void */
 
-static Symbol pointersym;	/* symbol for pointer types */
+static sSymbol_t pointersym;	/* symbol for pointer types */
 static struct type {		/* type list entries: */
 	struct tynode type;		/* the type */
 	struct type *link;		/* next type on the hash chain */
 } *typetable[128];		/* current set of types */
 static int maxlevel;		/* maximum scope level of entries in typetable */ 
 
-dclproto(static Field check,(Type, Type, Field, int));
-dclproto(static Type funcl,(Type, List));
-dclproto(static Field isfield,(char *, Field));
-dclproto(static Type tynode,(int, Type, int, int, Generic));
+static sField_t check(sType_t, sType_t, sField_t, int);
+static sType_t funcl(sType_t, sList_t);
+static sField_t isfield(char *, sField_t);
+static sType_t tynode(int, sType_t, int, int, void *);
 
 #define VOID_METRICS 0,0,0
 
 /* typeInit - initialize basic types */
 void typeInit() {
-#define xx(v,name,op,metrics) { Symbol p = install(string(name), &types, 1); \
-	v = p->type = tynode(op, 0, metrics+1?(Generic)p:0); p->addressed = (metrics); \
+#define xx(v,name,op,metrics) { sSymbol_t p = install(string(name), &types, 1); \
+	v = p->type = tynode(op, 0, metrics+1?(void *)p:0); p->addressed = (metrics); \
 	assert(v->align == 0 || v->size%v->align == 0); }
 	xx(chartype,	  "char",		CHAR,	  CHAR_METRICS);
 	xx(doubletype,	  "double",		DOUBLE,	  DOUBLE_METRICS);
@@ -61,7 +61,7 @@ void typeInit() {
 }
 
 /* array - construct the type `array 0..n-1 of ty' with alignment a or ty's */
-Type array(ty, n, a) Type ty; {
+sType_t array(ty, n, a) sType_t ty; {
 	if (ty && isfunc(ty)) {
 		error("illegal type `array of %t'\n", ty);
 		return array(inttype, n, 0);
@@ -79,11 +79,11 @@ Type array(ty, n, a) Type ty; {
 		error("size of `array of %t' exceeds %d bytes\n", ty, INT_MAX);
 		n = 1;
 	}
-	return tynode(ARRAY, ty, n*ty->size, a, (Generic)0);
+	return tynode(ARRAY, ty, n*ty->size, a, NULL);
 }
 
 /* atop - convert ty from `array of ty' to `pointer to ty' */
-Type atop(ty) Type ty; {
+sType_t atop(ty) sType_t ty; {
 	if (isarray(ty))
 		return ptr(ty->type);
 	error("type error: %s\n", "array expected");
@@ -91,14 +91,14 @@ Type atop(ty) Type ty; {
 }
 
 /* check - check ty for ambiguous inherited fields, return augmented field set */
-static Field check(ty, top, inherited, off) Type ty, top; Field inherited; {
-	Field p;
+static sField_t check(ty, top, inherited, off) sType_t ty, top; sField_t inherited; {
+	sField_t p;
 
 	for (p = ty->u.sym->u.s.flist; p; p = p->link)
 		if (p->name && isfield(p->name, inherited))
 			error("ambiguous field `%s' of `%t' from `%t'\n", p->name, top, ty);
 		else if (p->name && !isfield(p->name, top->u.sym->u.s.flist)) {
-			Field new = (Field) talloc(sizeof *new);
+			sField_t new = (sField_t) talloc(sizeof *new);
 			*new = *p;
 			new->offset = off + p->offset;
 			new->link = inherited;
@@ -112,8 +112,8 @@ static Field check(ty, top, inherited, off) Type ty, top; Field inherited; {
 }
 
 /* checkfields - check for ambiguous inherited fields in struct/union ty */
-void checkfields(ty) Type ty; {
-	Field p, inherited = 0;
+void checkfields(ty) sType_t ty; {
+	sField_t p, inherited = 0;
 
 	for (p = ty->u.sym->u.s.flist; p; p = p->link)
 		if (p->name == 0)
@@ -121,7 +121,7 @@ void checkfields(ty) Type ty; {
 }
 
 /* composite - return the composite type of ty1 & ty2, or 0 if ty1 & ty2 are incompatible */
-Type composite(ty1, ty2) Type ty1, ty2; {
+sType_t composite(ty1, ty2) sType_t ty1, ty2; {
 	if (ty1 == ty2)
 		return ty1;
 	if (ty1->op != ty2->op)
@@ -134,7 +134,7 @@ Type composite(ty1, ty2) Type ty1, ty2; {
 	case POINTER:
 		return ptr(composite(ty1->type, ty2->type));
 	case ARRAY: {
-		Type ty;
+		sType_t ty;
 		if (ty = composite(ty1->type, ty2->type)) {
 			if (ty1->size && ty1->type->size && ty2->size == 0)
 				return array(ty, ty1->size/ty1->type->size, ty1->align);
@@ -145,16 +145,16 @@ Type composite(ty1, ty2) Type ty1, ty2; {
 		break;
 		}
 	case FUNCTION: {
-		Type ty;
-		List list = 0;
+		sType_t ty;
+		sList_t list = 0;
 		if (ty = composite(ty1->type, ty2->type)) {
-			Type *p1, *p2, proto = 0;
+			sType_t *p1, *p2, proto = 0;
 			if (ty1->u.proto && ty2->u.proto == 0)
 				return func(ty, ty1->u.proto);
 			if (ty2->u.proto && ty1->u.proto == 0)
 				return func(ty, ty2->u.proto);
 			for (p1 = ty1->u.proto, p2 = ty2->u.proto; *p1 && *p2; p1++, p2++) {
-				Type ty;
+				sType_t ty;
 				if ((ty = composite(unqual(*p1), unqual(*p2))) == 0)
 					return 0;
 				if (isconst(*p1) || isconst(*p2))
@@ -180,8 +180,9 @@ Type composite(ty1, ty2) Type ty1, ty2; {
 }
 
 /* deftype - define name to be equivalent to type ty */
-Symbol deftype(name, ty, pos) char *name; Type ty; Coordinate *pos; {
-	Symbol p = lookup(name, identifiers);
+sSymbol_t deftype(char *name, sType_t ty, sCoordinate_t *pos)
+{
+	sSymbol_t p = lookup(name, identifiers);
 
 	if (p && p->scope == level)
 		error("redeclaration of `%s'\n", name);
@@ -193,7 +194,7 @@ Symbol deftype(name, ty, pos) char *name; Type ty; Coordinate *pos; {
 }
 
 /* deref - dereference ty, type *ty */
-Type deref(ty) Type ty; {
+sType_t deref(ty) sType_t ty; {
 	if (isptr(ty))
 		ty = ty->type;
 	else
@@ -202,7 +203,7 @@ Type deref(ty) Type ty; {
 }
 
 /* eqtype - is ty1==ty2?  handles arrays & functions; return ret if ty1==ty2, but one is incomplete */
-int eqtype(ty1, ty2, ret) Type ty1, ty2; {
+int eqtype(ty1, ty2, ret) sType_t ty1, ty2; {
 	if (ty1 == ty2)
 		return 1;
 	if (ty1->op != ty2->op)
@@ -221,7 +222,7 @@ int eqtype(ty1, ty2, ret) Type ty1, ty2; {
 		break;
 	case FUNCTION:
 		if (eqtype(ty1->type, ty2->type, ret)) {
-			Type *p1 = ty1->u.proto, *p2 = ty2->u.proto;
+			sType_t *p1 = ty1->u.proto, *p2 = ty2->u.proto;
 			if (p1 == p2)
 				return 1;
 			if (p1 == 0 || p2 == 0) {
@@ -230,7 +231,7 @@ int eqtype(ty1, ty2, ret) Type ty1, ty2; {
 					p1 = p2;
 				}
 				for ( ; *p1; p1++) {
-					Type ty = unqual(*p1);
+					sType_t ty = unqual(*p1);
 					if (promote(ty) != ty || ty == floattype
 					|| ty == voidtype && p1 != ty1->u.proto)
 						return 0;
@@ -256,8 +257,8 @@ int eqtype(ty1, ty2, ret) Type ty1, ty2; {
 }
 
 /* extends - if ty extends fty, return a pointer to field structure */
-Field extends(ty, fty) Type ty, fty; {
-	Field p, q;
+sField_t extends(ty, fty) sType_t ty, fty; {
+	sField_t p, q;
 
 	for (p = unqual(ty)->u.sym->u.s.flist; p; p = p->link)
 		if (p->name == 0 && unqual(p->type) == unqual(fty))
@@ -272,8 +273,8 @@ Field extends(ty, fty) Type ty, fty; {
 }
 
 /* fieldlist - construct a flat list of fields in type ty */
-Field fieldlist(ty) Type ty; {
-	Field p, q, t, inherited = 0, *r;
+sField_t fieldlist(ty) sType_t ty; {
+	sField_t p, q, t, inherited = 0, *r;
 
 	ty = unqual(ty);
 	for (p = ty->u.sym->u.s.flist; p; p = p->link)
@@ -289,7 +290,7 @@ Field fieldlist(ty) Type ty; {
 		if (p->name == 0)
 			p = p->link;
 		else if (p->offset <= q->offset) {
-			*r = (Field) talloc(sizeof **r);
+			*r = (sField_t) talloc(sizeof **r);
 			**r = *p;
 			r = &(*r)->link;
 			p = p->link;
@@ -300,7 +301,7 @@ Field fieldlist(ty) Type ty; {
 		}
 	for ( ; p; p = p->link)
 		if (p->name) {
-			*r = (Field) talloc(sizeof **r);
+			*r = (sField_t) talloc(sizeof **r);
 			**r = *p;
 			r = &(*r)->link;
 		}
@@ -309,12 +310,12 @@ Field fieldlist(ty) Type ty; {
 }
 
 /* fieldref - find field name of type ty, return entry */
-Field fieldref(name, ty) char *name; Type ty; {
-	Field p;
+sField_t fieldref(name, ty) char *name; sType_t ty; {
+	sField_t p;
 
 	if (p = isfield(name, unqual(ty)->u.sym->u.s.flist)) {
 		if (xref) {
-			Symbol q;
+			sSymbol_t q;
 			assert(unqual(ty)->u.sym->u.s.ftab);
 			q = lookup(name, unqual(ty)->u.sym->u.s.ftab);
 			assert(q);
@@ -323,7 +324,7 @@ Field fieldref(name, ty) char *name; Type ty; {
 		return p;
 	}
 	for (p = unqual(ty)->u.sym->u.s.flist; p; p = p->link) {
-		Field q;
+		sField_t q;
 		if (p->name == 0 && (q = fieldref(name, p->type))) {
 			static struct field f;
 			f = *q;
@@ -335,7 +336,8 @@ Field fieldref(name, ty) char *name; Type ty; {
 }
 
 /* freturn - for `function returning ty', return ty */
-Type freturn(ty) Type ty; {
+sType_t freturn(sType_t ty)
+{
 	if (isfunc(ty))
 		return ty->type;
 	error("type error: %s\n", "function expected");
@@ -343,19 +345,22 @@ Type freturn(ty) Type ty; {
 }
 
 /* func - construct the type `function (proto) returning ty' */
-Type func(ty, proto) Type ty, *proto; {
+sType_t func(sType_t ty, sType_t *proto)
+{
 	if (ty && (isarray(ty) || isfunc(ty)))
 		error("illegal return type `%t'\n", ty);
-	return tynode(FUNCTION, ty, 0, 0, (Generic)proto);
+	return tynode(FUNCTION, ty, 0, 0, (void *)proto);
 }
 
 /* funcl - construct the type `function (list) returning ty' */
-static Type funcl(ty, list) Type ty; List list; {
-	return func(ty, (Type *)ltoa(list, (Generic *)alloc((length(list) + 1)*sizeof (Type))));
+static sType_t funcl(sType_t ty, sList_t list)
+{
+	return func(ty, (sType_t *)ltoa(list, (void * *)alloc((length(list) + 1)*sizeof (sType_t))));
 }
 
 /* hasproto - true iff ty has no function types or they all have prototypes */
-int hasproto(ty) Type ty; {
+int hasproto(sType_t ty)
+{
 	if (Aflag < 1 || ty == 0)
 		return 1;
 	switch (ty->op) {
@@ -375,7 +380,7 @@ int hasproto(ty) Type ty; {
 }
 
 /* isfield - if name is a field in flist, return pointer to the field structure */
-static Field isfield(name, flist) char *name; Field flist; {
+static sField_t isfield(name, flist) char *name; sField_t flist; {
 	for ( ; flist; flist = flist->link)
 		if (flist->name == name)
 			break;
@@ -383,15 +388,16 @@ static Field isfield(name, flist) char *name; Field flist; {
 }
 
 /* newfield - install a new field in ty with type fty */
-Field newfield(name, ty, fty) char *name; Type ty, fty; {
-	Field p, *q = &ty->u.sym->u.s.flist;
+sField_t newfield(char *name, sType_t ty, sType_t fty)
+{
+	sField_t p, *q = &ty->u.sym->u.s.flist;
 
 	if (name == 0)
 		name = stringd(genlabel(1));
 	for (p = *q; p; q = &p->link, p = *q)
 		if (p->name == name)
 			error("duplicate field name `%s' in `%t'\n", name, ty);
-	*q = p = (Field)alloc(sizeof *p);
+	*q = p = (sField_t)alloc(sizeof *p);
 	BZERO(p, struct field);
 	p->name = name;
 	p->type = fty;
@@ -404,8 +410,9 @@ Field newfield(name, ty, fty) char *name; Type ty, fty; {
 }
 
 /* newstruct - install a new structure/union/enum depending on op */
-Type newstruct(op, tag) char *tag; {
-	Symbol p;
+sType_t newstruct(int op, char *tag)
+{
+	sSymbol_t p;
 
 	if (!tag || *tag == '\0')  /* anonymous structure/union/enum */
 		tag = stringd(genlabel(1));
@@ -424,7 +431,8 @@ Type newstruct(op, tag) char *tag; {
 }
 
 /* outtype - output type ty */
-void outtype(ty) Type ty; {
+void outtype(sType_t ty)
+{
 	switch (ty->op) {
 	case CONST+VOLATILE:
 		print("%k %k %t", CONST, VOLATILE, ty->type);
@@ -438,7 +446,7 @@ void outtype(ty) Type ty; {
 			print("incomplete ");
 		assert(ty->u.sym->name);
 		if (*ty->u.sym->name >= '1' && *ty->u.sym->name <= '9') {
-			Symbol p = findtype(ty);
+			sSymbol_t p = findtype(ty);
 			if (p == 0)
 				print("%k defined at %w", ty->op, &ty->u.sym->src);
 			else
@@ -459,7 +467,7 @@ void outtype(ty) Type ty; {
 	case FUNCTION:
 		print("%t function", ty->type);
 		if (ty->u.proto) {
-			Type *p = ty->u.proto;
+			sType_t *p = ty->u.proto;
 			print("(%t", *p);
 			while (*++p)
 				if (*p == voidtype)
@@ -487,7 +495,7 @@ void outtype(ty) Type ty; {
 }
 
 /* printdecl - output a C declaration for symbol p of type ty */
-void printdecl(p, ty) Symbol p; Type ty; {
+void printdecl(sSymbol_t p, sType_t ty) {
 	switch (p->sclass) {
 	case AUTO:
 		fprint(2, "%s;\n", typestring(ty, p->name));
@@ -502,12 +510,13 @@ void printdecl(p, ty) Symbol p; Type ty; {
 }
 
 /* printproto - output a prototype declaration for function p */
-void printproto(p, callee) Symbol p, callee[]; {
+void printproto(sSymbol_t p, sSymbol_t callee[])
+{
 	if (p->type->u.proto)
 		printdecl(p, p->type);
 	else {
 		int i;
-		List list = 0;
+		sList_t list = 0;
 		if (callee[0] == 0)
 			list = append(voidtype, list);
 		else
@@ -518,10 +527,11 @@ void printproto(p, callee) Symbol p, callee[]; {
 }
 
 /* printtype - print details of type ty on fd */
-void printtype(ty, fd) Type ty; {
+void printtype(sType_t ty, int fd)
+{
 	switch (ty->op) {
 	case STRUCT: case UNION: {
-		Field p;
+		sField_t p;
 		fprint(fd, "%k %s size=%d {\n", ty->op, ty->u.sym->name, ty->size);
 		for (p = ty->u.sym->u.s.flist; p; p = p->link) {
 			fprint(fd, "field %s: offset=%d", p->name, p->offset);
@@ -534,7 +544,7 @@ void printtype(ty, fd) Type ty; {
 		}
 	case ENUM: {
 		int i;
-		Symbol p;
+		sSymbol_t p;
 		fprint(fd, "enum %s {", ty->u.sym->name);
 		for (i = 0; p = ty->u.sym->u.idlist[i]; i++) {
 			if (i > 0)
@@ -550,12 +560,12 @@ void printtype(ty, fd) Type ty; {
 }
 
 /* ptr - construct the type `pointer to ty' */
-Type ptr(ty) Type ty; {
-	return tynode(POINTER, ty, POINTER_METRICS+1?(Generic)pointersym:0);
+sType_t ptr(ty) sType_t ty; {
+	return tynode(POINTER, ty, POINTER_METRICS+1?(void *)pointersym:0);
 }
 
 /* qual - construct the type `op ty' where op is CONST or VOLATILE */
-Type qual(op, ty) Type ty; {
+sType_t qual(op, ty) sType_t ty; {
 	if (isarray(ty))
 		ty = tynode(ARRAY, qual(op, ty->type), ty->size,
 			ty->align, 0);
@@ -604,7 +614,7 @@ void rmtypes() {
 }
 
 /* ttob - map arbitrary type ty to integer basic type */
-int ttob(ty) Type ty; {
+int ttob(ty) sType_t ty; {
 	switch (ty->op) {
 	case CONST: case VOLATILE: case CONST+VOLATILE:
 		return ttob(ty->type);
@@ -624,7 +634,8 @@ int ttob(ty) Type ty; {
 }
 
 /* tynode - allocate and initialize a type node */
-static Type tynode(op, type, size, align, ptr) Type type; Generic ptr; {
+static sType_t tynode(int op, sType_t type, int size, int align, void *ptr)
+{
 	int i = (opindex(op)^((unsigned)type>>2))&(sizeof typetable/sizeof typetable[0]-1);
 	struct type *tn;
 
@@ -640,16 +651,16 @@ static Type tynode(op, type, size, align, ptr) Type type; Generic ptr; {
 	tn->type.size = size;
 	tn->type.align = align;
 	tn->type.u.ptr = ptr;
-	BZERO((&tn->type.x), Xtype);
+	BZERO((&tn->type.x), sXtype_t);
 	tn->link = typetable[i];
 	typetable[i] = tn;
 	return &tn->type;
 }
 
 /* typestring - return ty as C declaration for str, which may be "" */
-char *typestring(ty, str) Type ty; char *str; {
+char *typestring(ty, str) sType_t ty; char *str; {
 	for ( ; ty; ty = ty->type) {
-		Symbol p;
+		sSymbol_t p;
 		switch (ty->op) {
 		case CONST+VOLATILE:
 			if (isptr(ty->type))
@@ -687,7 +698,7 @@ char *typestring(ty, str) Type ty; char *str; {
 			if (ty->u.proto == 0)
 				str = stringf("%s()", str);
 			else {
-				Type *proto = ty->u.proto;
+				sType_t *proto = ty->u.proto;
 				str = stringf("%s(%s", str, typestring(*proto, ""));
 				while (*++proto)
 					if (*proto == voidtype)
@@ -714,7 +725,7 @@ char *typestring(ty, str) Type ty; char *str; {
 }
 
 /* variadic - is function type ty variadic? */
-int variadic(ty) Type ty; {
+int variadic(ty) sType_t ty; {
 	if (isfunc(ty) && ty->u.proto) {
 		int i;
 		for (i = 0; ty->u.proto[i]; i++)

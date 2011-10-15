@@ -1,4 +1,7 @@
 /* C compiler: configuration parameters for 6502 generator */
+#ifndef CONFIG_H
+#define CONFIG_H
+
 
 #define R6502
 
@@ -15,24 +18,27 @@
 #define CC_LITTLE_ENDIAN	 /* right-to-left bit fields */
 #define JUMP_ON_RETURN	0
 
-typedef struct {
+typedef struct Env
+{
 	int offset;	/* max offset of locals in current sub-block */
-} Env;
+} sEnv_t;
 
-typedef struct {
+typedef struct Xnode
+{
 	char	*name;		/* node's result external representation */
 	char	adrmode;	/* addressing mode of the result */
-	Symbol	result;		/* operator's result */
+	sSymbol_t	result;		/* operator's result */
 	int	argoffset;	/* offset pour ARG et CALL */
-	Node	next;		/* next node on linearized list */
+	sNode_t	next;		/* next node on linearized list */
 	char	optimized;
 	char	visited;
-} Xnode;
+} sXnode_t;
 
-typedef struct {
+typedef struct Xsymbol 
+{
 	char	*name;		/* name for back end */
 	char	adrmode;
-} Xsymbol;
+} sXsymbol_t;
 
 #define stabblock(a,b,c)
 #define stabend(a,b,c,d,e)
@@ -41,3 +47,5 @@ typedef struct {
 #define stabline(a)
 #define stabsym(a)
 #define stabtype(a)
+
+#endif /* CONFIG_H */

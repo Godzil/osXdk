@@ -5,7 +5,7 @@
 #include <string.h> 
 
 #include "xah.h"
-#include "xar.h"
+#include "xa_refactor.h"
 #include "xa.h"
 #include "xat.h"
 #include "xao.h"
@@ -57,7 +57,7 @@ void Options::set_fopt(int l, signed char *buf, int reallen)
 		m_olist = (Fopt*)realloc(m_olist, m_mlist*sizeof(Fopt));
 		if (!m_olist) 
 		{	
-			fprintf(stderr, "Fatal: Couldn't alloc memory (%d bytes) for fopt list!\n",m_mlist*sizeof(Fopt));
+			fprintf(stderr, "Fatal: Couldn't alloc memory (%lu bytes) for fopt list!\n",m_mlist*sizeof(Fopt));
 			exit(1);
 		}
 	}

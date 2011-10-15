@@ -4,14 +4,14 @@
 
 struct entry {		/* symbol table entry: */
 	struct symbol sym;	/* the symbol */
-	List refs;		/* list form of sym.uses (omit) */
+	sList_t refs;		/* list form of sym.uses (omit) */
 	struct entry *link;	/* next entry on hash chain */
 };
 
 struct table {		/* symbol tables: */
 	int level;		/* scope level for this table */
 	struct table *previous;	/* table for previous scope */
-	Symbol list;		/* list of entries via up fields */
+	sSymbol_t list;		/* list of entries via up fields */
 	struct entry *buckets[HASHSIZE];
 };
 static struct table
@@ -19,24 +19,24 @@ static struct table
 	texternals =   { GLOBAL },
 	tidentifiers = { GLOBAL },
 	ttypes =       { GLOBAL };
-Table constants	  = &tconstants;	/* constants */
-Table externals	  = &texternals;	/* externals */
-Table identifiers = &tidentifiers;	/* identifiers */
-Table globals	  = &tidentifiers;	/* globals */
-Table labels[2];			/* labels */
-Table types	  = &ttypes;		/* types */
+sTable_t constants	  = &tconstants;	/* constants */
+sTable_t externals	  = &texternals;	/* externals */
+sTable_t identifiers = &tidentifiers;	/* identifiers */
+sTable_t globals	  = &tidentifiers;	/* globals */
+sTable_t labels[2];			/* labels */
+sTable_t types	  = &ttypes;		/* types */
 	
 int bnumber;				/* current block number */
 int level;				/* current block level */
-List symbols;				/* list of all symbols; used only if xref != 0 */
+sList_t symbols;				/* list of all symbols; used only if xref != 0 */
 
 static struct temporary {/* temporaries: */
-	Symbol sym;		/* pointer to the symbol */
+	sSymbol_t sym;		/* pointer to the symbol */
 	struct temporary *link;	/* next available temporary */
 } *temps;		/* list of available temporaries */
 
 /* constant - install and return constant v of type ty */
-Symbol constant(Type ty,Value v)
+sSymbol_t constant(sType_t ty, uValue_t v)
 {
 	struct entry *p;
 	unsigned h = v.u&(HASHSIZE-1);
@@ -85,7 +85,7 @@ void exitscope() {
 	if (identifiers->level == level) {
 		if (Aflag >= 2) {
 			int n = 0;
-			Symbol p;
+			sSymbol_t p;
 			for (p = identifiers->list; p && p->scope == level; p = p->up)
 				if (++n > 127) {
 					warning("more than 127 identifiers declared in a block\n");
@@ -98,7 +98,7 @@ void exitscope() {
 	}
 	if (types->level == level) {
 		if (xref) {	/* (omit) */
-			foreach(types, level, fielduses, (Generic)0);	/* (omit) */
+			foreach(types, level, fielduses, (void *)0);	/* (omit) */
 			setuses(types);	/* (omit) */
 		}	/* (omit) */
 		types = types->previous;
@@ -108,15 +108,15 @@ void exitscope() {
 }
 
 /* fielduses - convert use lists for fields in type p */
-void fielduses(p, cl) Symbol p; Generic cl; {
+void fielduses(p, cl) sSymbol_t p; void * cl; {
 	if (p->type && isstruct(p->type) && p->u.s.ftab)
 		setuses(p->u.s.ftab);
 }
 
 /* findlabel - lookup/install label lab in the labels table */
-Symbol findlabel(lab) {
+sSymbol_t findlabel(lab) {
 	char *label = stringd(lab);
-	Symbol p;
+	sSymbol_t p;
 
 	if (p = lookup(label, labels[1]))
 		return p;
@@ -129,8 +129,8 @@ Symbol findlabel(lab) {
 }
 
 /* findtype - find type ty in identifiers */
-Symbol findtype(ty) Type ty; {
-	Table tp = identifiers;
+sSymbol_t findtype(ty) sType_t ty; {
+	sTable_t tp = identifiers;
 	int i;
 	struct entry *p;
 
@@ -145,14 +145,15 @@ Symbol findtype(ty) Type ty; {
 }
 
 /* foreach - call f(p) for each entry p in table tp */
-void foreach(tp, lev, apply, cl) Table tp;
-dclproto(void (*apply),(Symbol, Generic)); Generic cl; {;
+//
+void foreach(sTable_t tp, int lev, fApplySymbol_t apply, void *cl)
+{
 	assert(tp);
 	while (tp && tp->level > lev)
 		tp = tp->previous;
 	if (tp && tp->level == lev) {
-		Symbol p;
-		Coordinate sav;
+		sSymbol_t p;
+		sCoordinate_t sav;
 		sav = src;
 		for (p = tp->list; p && p->scope == lev; p = p->up) {
 			src = p->src;
@@ -163,14 +164,14 @@ dclproto(void (*apply),(Symbol, Generic)); Generic cl; {;
 }
 
 /* genident - create an identifier with class `sclass', type ty at scope lev */
-Symbol genident(int sclass,Type ty,int lev)
+sSymbol_t genident(int sclass,sType_t ty,int lev)
 {
-	Symbol p;
+	sSymbol_t p;
 
 	if (lev <= PARAM)
-		p = (Symbol) alloc(sizeof *p);
+		p = (sSymbol_t) alloc(sizeof *p);
 	else
-		p = (Symbol) talloc(sizeof *p);
+		p = (sSymbol_t) talloc(sizeof *p);
 	BZERO(p, struct symbol);
 	p->name = stringd(genlabel(1));
 	p->scope = lev;
@@ -192,7 +193,7 @@ int genlabel(n)
 }
 
 /* install - install name in table *tp; permanently allocate entry iff perm!=0 */
-Symbol install(char *name,Table *tpp,int perm)
+sSymbol_t install(char *name,sTable_t *tpp,int perm)
 {
 	struct entry *p;
 	unsigned h = (unsigned)name&(HASHSIZE-1);
@@ -215,25 +216,25 @@ Symbol install(char *name,Table *tpp,int perm)
 }
 
 /* intconst - install and return integer constant n */
-Symbol intconst(int n) 
+sSymbol_t intconst(int n) 
 {
-	Value v;
+	uValue_t v;
 
 	v.i = n;
 	return constant(inttype, v);
 }
 
 /* locus - append (table, cp) to the evolving loci and symbol tables lists */
-void locus(Table tp,Coordinate *cp)
+void locus(sTable_t tp,sCoordinate_t *cp)
 {
-	extern List loci, tables;
+	extern sList_t loci, tables;
 
-	loci = append((Generic)cp, loci);
-	tables = append((Generic)tp->list, tables);
+	loci = append((void *)cp, loci);
+	tables = append((void *)tp->list, tables);
 }
 
 /* lookup - lookup name in table tp, return pointer to entry */
-Symbol lookup(char *name,Table tp)
+sSymbol_t lookup(char *name,sTable_t tp)
 {
 	struct entry *p;
 	unsigned h = (unsigned)name&(HASHSIZE-1);
@@ -248,9 +249,9 @@ Symbol lookup(char *name,Table tp)
 }
 
 /* newconst - install and return constant n with type tc */
-Symbol newconst(Value v,int tc) 
+sSymbol_t newconst(uValue_t v, int tc) 
 {
-	static Type *btot[] = 
+	static sType_t *btot[] = 
 	{ 
 		0, 
 		&floattype, 
@@ -267,10 +268,10 @@ Symbol newconst(Value v,int tc)
 }
 
 /* newtemp - back-end interface to temporary (see below) */
-Symbol newtemp(int sclass,int tc) 
+sSymbol_t newtemp(int sclass,int tc) 
 {
-	Symbol t1;
-	static Type *btot[] = { 0, &floattype, &doubletype, &chartype,
+	sSymbol_t t1;
+	static sType_t *btot[] = { 0, &floattype, &doubletype, &chartype,
 		&shorttype, &inttype, &unsignedtype, &voidptype };
 
 	assert(tc > 0 && tc < sizeof btot/sizeof btot[0]);
@@ -284,7 +285,7 @@ Symbol newtemp(int sclass,int tc)
 }
 
 /* release - release a temporary for re-use */
-void release(Symbol t1)
+void release(sSymbol_t t1)
 {
 	if (t1->ref) 
 	{
@@ -309,7 +310,7 @@ void rmtemps(int sclass,int  level)
 }
 
 /* setuses - convert p->refs to p->uses for all p at the current level in *tp */
-void setuses(Table tp)
+void setuses(sTable_t tp)
 {
 	if (xref) 
 	{
@@ -319,18 +320,18 @@ void setuses(Table tp)
 			for (p = tp->buckets[i]; p; p = p->link) 
 			{
 				if (p->refs)
-					p->sym.uses = (Coordinate **)ltoa(p->refs, 0);
+					p->sym.uses = (sCoordinate_t **)ltoa(p->refs, 0);
 				p->refs = 0;
-				symbols = append((Generic)&p->sym, symbols);
+				symbols = append((void *)&p->sym, symbols);
 			}
 	}
 }
 
 /* table - create a new table with predecessor tp, scope lev */
-Table table(Table tp,int lev)
+sTable_t table(sTable_t tp,int lev)
 {
 	int i;
-	Table new = (Table)talloc(sizeof *new);
+	sTable_t new = (sTable_t)talloc(sizeof *new);
 
 	assert(lev > GLOBAL || lev == LABELS);
 	new->previous = tp;
@@ -342,9 +343,9 @@ Table table(Table tp,int lev)
 }
 
 /* temporary - create temporary with class `sclass', type ty */
-Symbol temporary(int sclass,Type ty)
+sSymbol_t temporary(int sclass,sType_t ty)
 {
-	Symbol t1;
+	sSymbol_t t1;
 	struct temporary *p, **q = &temps;
 
 	for (p = *q; p; q = &p->link, p = *q)
@@ -362,12 +363,12 @@ Symbol temporary(int sclass,Type ty)
 
 
 /* use - add src to the list of uses for p */
-void use(Symbol p,Coordinate src)
+void use(sSymbol_t p, sCoordinate_t src)
 {
 	if (xref) 
 	{
-		Coordinate *cp = (Coordinate *)alloc(sizeof *cp);
+		sCoordinate_t *cp = (sCoordinate_t *)alloc(sizeof *cp);
 		*cp = src;
-		((struct entry *)p)->refs = append((Generic)cp, ((struct entry *)p)->refs);
+		((struct entry *)p)->refs = append((void *)cp, ((struct entry *)p)->refs);
 	}
 }

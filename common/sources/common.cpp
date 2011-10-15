@@ -58,7 +58,11 @@ void ShowError(const char *message)
 
 	// Show the resulting message on screen
 	printf("\r\n%s\r\n",cErrorMessage.c_str());
- 	getch();
+   
+#ifdef __WINDOWS__
+ 	getch(); /* This is NOT UNIX friendly */
+#endif
+
 	exit(1);
 }
 
@@ -309,8 +313,8 @@ ArgumentParser::ArgumentParser(int argc,char *argv[]) :
 	m_argc(argc),
 	m_argv(argv),
 	m_first_param(1),
-	m_nb_arg(-1),
-	m_remaining_argc(argc)
+   m_remaining_argc(argc),
+   m_nb_arg(-1)
 {
 	assert(argc>=1);
 
@@ -421,7 +425,6 @@ const char* ArgumentParser::GetRemainingStuff()
 bool get_switch(const char *&ptr_arg,const char *ptr_switch)
 {
 	int	lenght=strlen(ptr_switch);
-
 	if ((!ptr_arg) || memicmp(ptr_arg,ptr_switch,lenght))
 	{
 		// Not a match
@@ -476,7 +479,7 @@ int ConvertAdress(const char *ptr_value)
 	}
 
 	adress=0;
-	while (car=*ptr_value++)
+	while ( (car=*ptr_value++) )
 	{
 		if ((car>='0') && (car<='9'))
 		{
@@ -691,6 +694,9 @@ void TextFileGenerator::ConvertData(std::string& cDestString,const void* pSource
 
 	switch (m_nFileType)
 	{
+   default:
+      break;
+
 	case eLanguage_C:
 		cHeaderPreLine="\t";
 		cEntrySeparator=",";

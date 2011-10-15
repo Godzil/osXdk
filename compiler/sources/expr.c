@@ -10,19 +10,19 @@ static int oper[] = {
 #define xx(a,b,c,d,e,f,g) d,
 #include "token.h"
 };
-dclproto(static Tree call,(Tree, Type, Coordinate));
-dclproto(static Tree expr2,(void));
-dclproto(static Tree expr3,(int));
-dclproto(static Tree nullcheck,(Tree));
-dclproto(static Tree postfix,(Tree));
-dclproto(static Tree prefix,(void));
-dclproto(static Tree primary,(void));
-dclproto(static Tree rightkid,(Tree));
-dclproto(static Tree value,(Tree));
+static sTree_t call(sTree_t, sType_t, sCoordinate_t);
+static sTree_t expr2(void);
+static sTree_t expr3(int);
+static sTree_t nullcheck(sTree_t);
+static sTree_t postfix(sTree_t);
+static sTree_t prefix(void);
+static sTree_t primary(void);
+static sTree_t rightkid(sTree_t);
+static sTree_t value(sTree_t);
 
 /* addrof - address of p */
-Tree addrof(p) Tree p; {
-	Tree q = p;
+sTree_t addrof(p) sTree_t p; {
+	sTree_t q = p;
 
 	for (;;)
 		switch (generic(q->op)) {
@@ -34,7 +34,7 @@ Tree addrof(p) Tree p; {
 			q = q->kids[1];
 			continue;
 		case COND: {
-			Symbol t1 = q->u.sym;
+			sSymbol_t t1 = q->u.sym;
 			q->u.sym = 0;
 			q = idnode(t1);
 			/* fall thru */
@@ -51,12 +51,13 @@ Tree addrof(p) Tree p; {
 }
 
 /* asgn - generate tree for assignment of expr e to symbol p sans qualifiers */
-Tree asgn(p, e) Symbol p; Tree e; {
+sTree_t asgn(sSymbol_t p, sTree_t e)
+{
 	if (isarray(p->type))
 		e = tree(ASGN+B, p->type, idnode(p),
 			tree(INDIR+B, e->type, e, 0));
 	else {
-		Type ty = p->type;
+		sType_t ty = p->type;
 		p->type = unqual(p->type);
 		if (isstruct(p->type) && p->type->u.sym->u.s.cfields) {
 			p->type->u.sym->u.s.cfields = 0;
@@ -70,8 +71,8 @@ Tree asgn(p, e) Symbol p; Tree e; {
 }
 
 /* assign - perform type-checking of assignment of p to variable of type xty */
-Type assign(xty, p) Type xty; Tree p; {
-	Type yty = unqual(p->type);
+sType_t assign(xty, p) sType_t xty; sTree_t p; {
+	sType_t yty = unqual(p->type);
 
 	if (yty->size == 0)
 		return 0;
@@ -85,7 +86,7 @@ Type assign(xty, p) Type xty; Tree p; {
 	if (isstruct(xty) && isstruct(yty) && extends(yty, xty))
 		return xty;
 	if (isptr(xty) && isptr(yty)) {
-		Type lty = xty->type, rty = yty->type;
+		sType_t lty = xty->type, rty = yty->type;
 		if (isstruct(lty) && isstruct(rty) && extends(rty, lty))
 			return xty;
 		if (eqtype(lty, rty, 1)
@@ -110,10 +111,11 @@ Type assign(xty, p) Type xty; Tree p; {
 }
 
 /* call - parse function call to f, type fty */
-static Tree call(f, fty, src) Tree f; Type fty; Coordinate src; {
+static sTree_t call(sTree_t f, sType_t fty, sCoordinate_t src)
+{
 	int n = 0;
-	Tree args = 0, r = 0;
-	Type *proto = fty->u.proto;
+	sTree_t args = 0, r = 0;
+	sType_t *proto = fty->u.proto;
 
 	if (proto && *proto == voidtype)
 		proto = 0;
@@ -121,9 +123,9 @@ static Tree call(f, fty, src) Tree f; Type fty; Coordinate src; {
 		r = f;
 	if (t != ')')
 		do {
-			Tree q = pointer(expr1(0));
+			sTree_t q = pointer(expr1(0));
 			if (proto && *proto && *proto != voidtype) {
-				Type aty;
+				sType_t aty;
 				q = value(q);
 				if (aty = assign(*proto, q)) {
 					q = cast(q, aty);
@@ -182,14 +184,14 @@ static Tree call(f, fty, src) Tree f; Type fty; Coordinate src; {
 	if (r)
 		args = tree(RIGHT, voidtype, r, args);
 	if (events.calls)
-		apply(events.calls, (Generic)&src, (Generic)&f);
+		apply(events.calls, (void *)&src, (void *)&f);
 	return callnode(f, freturn(fty), args);
 }
 
 /* cast - cast expression p to type */
-Tree cast(p, type) Tree p; Type type; {
-	Field q;
-	Type pty, ty = unqual(type);
+sTree_t cast(p, type) sTree_t p; sType_t type; {
+	sField_t q;
+	sType_t pty, ty = unqual(type);
 
 	p = value(p);
 	if (p->type == type)
@@ -247,7 +249,7 @@ Tree cast(p, type) Tree p; Type type; {
 			 * d >= INT_MAX+1 ? (unsigned)(int)(d-(INT_MAX+1)) + INT_MAX+1 :
 			 *		    (unsigned)(int)d
 			 */
-			Tree c = tree(CNST+D, doubletype, 0, 0);
+			sTree_t c = tree(CNST+D, doubletype, 0, 0);
 			c->u.v.d = (double)INT_MAX + 1;
 			p = condnode(
 				simplify(GE, doubletype, p, c),
@@ -265,7 +267,7 @@ Tree cast(p, type) Tree p; Type type; {
 			 * For (double)u for unsigned u, build
 			 * (int)u >= 0 ? (double)(int)u : (double)(int)u + UINT_MAX + 1
 			 */
-			Tree u = simplify(CVU, inttype, p, 0);
+			sTree_t u = simplify(CVU, inttype, p, 0);
 			p = tree(CNST+D, doubletype, 0, 0);
 			p->u.v.d = utod(UINT_MAX) + 1;
 			p = condnode(
@@ -287,8 +289,8 @@ Tree cast(p, type) Tree p; Type type; {
 }
 
 /* cond - check for conditional operator, add comparison if necessary */
-Tree cond(p) Tree p; {
-	Opcode op = generic(rightkid(p)->op);
+sTree_t cond(p) sTree_t p; {
+	eOpcode_t op = generic(rightkid(p)->op);
 
 	if (op == AND || op == OR || op == NOT || op == EQ || op == NE
 	||  op ==  LE || op == LT || op ==  GE || op == GT)
@@ -299,8 +301,8 @@ Tree cond(p) Tree p; {
 }
 
 /* conditional - parse expression and cast to conditional */
-Tree conditional(tok) {
-	Tree p = expr(tok);
+sTree_t conditional(tok) {
+	sTree_t p = expr(tok);
 
 	if (Aflag > 1 && isfunc(p->type))
 		warning("%s used in a conditional expression\n", funcname(p));
@@ -308,8 +310,8 @@ Tree conditional(tok) {
 }
 
 /* constexpr - parse a constant expression */
-Tree constexpr(tok) {
-	Tree p;
+sTree_t constexpr(tok) {
+	sTree_t p;
 
 	needconst++;
 	p = expr1(tok);
@@ -318,16 +320,16 @@ Tree constexpr(tok) {
 }
 
 /* expr0 - parse an expression for side effect */
-Tree expr0(tok) {
+sTree_t expr0(tok) {
 	return root(expr(tok));
 }
 
 /* expr - parse an expression */
-Tree expr(tok) {
-	Tree p = expr1(0);
+sTree_t expr(tok) {
+	sTree_t p = expr1(0);
 
 	while (t == ',') {
-		Tree q;
+		sTree_t q;
 		t = gettok();
 		q = pointer(expr1(0));
 		if (generic(p->op) != CNST)
@@ -344,12 +346,12 @@ Tree expr(tok) {
 }
 
 /* expr1 - parse assignments */
-Tree expr1(tok) {
-	Tree p = expr2();
+sTree_t expr1(tok) {
+	sTree_t p = expr2();
 
 	while (t == '=' || (prec[t] >= 6 && prec[t] <= 8)
 	|| (prec[t] >= 11 && prec[t] <= 13)) {
-		Opcode op = t;
+		eOpcode_t op = t;
 		t = gettok();
 		if (oper[op] == ASGN)
 			p = asgnnode(ASGN, p, value(expr1(0)));
@@ -368,21 +370,21 @@ Tree expr1(tok) {
 }
 
 /* expr2 - parse conditional expressions */
-static Tree expr2() {
-	Tree p = expr3(4);
+static sTree_t expr2() {
+	sTree_t p = expr3(4);
 
 	if (t == '?') {
-		Tree l, r;
+		sTree_t l, r;
 		if (Aflag > 1 && isfunc(p->type))
 			warning("%s used in a conditional expression\n", funcname(p));
 		p = pointer(p);
 		t = gettok();
 		if (events.points) {
-			Tree e = 0;
-			apply(events.points, (Generic)&src, (Generic)&e);
+			sTree_t e = 0;
+			apply(events.points, (void *)&src, (void *)&e);
 			l = right(e, pointer(expr(':')));
 			e = 0;
-			apply(events.points, (Generic)&src, (Generic)&e);
+			apply(events.points, (void *)&src, (void *)&e);
 			r = right(e, pointer(expr2()));
 		} else {
 			l = pointer(expr(':'));
@@ -394,19 +396,19 @@ static Tree expr2() {
 }
 
 /* expr3 - parse expressions at precedence level k */
-static Tree expr3(k) {
+static sTree_t expr3(int k) {
 	int k1;
-	Tree p = prefix();
+	sTree_t p = prefix();
 
 	for (k1 = prec[t]; k1 >= k; k1--)
 		while (prec[t] == k1 && *cp != '=') {
-			Tree r;
-			Opcode op = t;
+			sTree_t r;
+			eOpcode_t op = t;
 			t = gettok();
 			p = pointer(p);
 			if (events.points && (op == ANDAND || op == OROR)) {
-				Tree e = 0;
-				apply(events.points, (Generic)&src, (Generic)&e);
+				sTree_t e = 0;
+				apply(events.points, (void *)&src, (void *)&e);
 				r = right(e, pointer(expr3(k1 + (k1>5))));
 			} else
 				r = pointer(expr3(k1 + (k1>5)));
@@ -416,9 +418,9 @@ static Tree expr3(k) {
 }
 
 /* field - construct tree for reference to field name via p */
-Tree field(p, name) Tree p; char *name; {
-	Field q;
-	Type ty1, ty = p->type;
+sTree_t field(p, name) sTree_t p; char *name; {
+	sField_t q;
+	sType_t ty1, ty = p->type;
 
 	if (isptr(ty))
 		ty = deref(ty);
@@ -446,17 +448,18 @@ Tree field(p, name) Tree p; char *name; {
 }
 
 /* funcname - return name of function f or `a function' */
-char *funcname(f) Tree f; {
+char *funcname(f) sTree_t f; {
 	if (isaddrop(f->op))
 		return stringf("`%s'", f->u.sym->name);
 	return "a function";
 }
 
 /* idnode - construct tree for reference to r-value of identifier p */
-Tree idnode(p) Symbol p; {
-	Opcode op;
-	Tree e;
-	Type ty = p->type ? unqual(p->type) : voidtype;
+sTree_t idnode(sSymbol_t p)
+{
+	eOpcode_t op;
+	sTree_t e;
+	sType_t ty = p->type ? unqual(p->type) : voidtype;
 
 	p->ref += refinc;
 	p->initialized = 1;	/* in case p->ref overflows */
@@ -491,13 +494,13 @@ Tree idnode(p) Symbol p; {
 }
 
 /* incr - construct tree for e1 op= e2 */
-Tree incr(op, e1, e2) Tree e1, e2; {
+sTree_t incr(op, e1, e2) sTree_t e1, e2; {
 	return asgnnode(ASGN, e1, (*opnode[op])(oper[op], e1, e2));
 }
 
 /* intexpr - parse a constant expression and return int value, default n */
 int intexpr(tok, n) {
-	Tree p = constexpr(tok);
+	sTree_t p = constexpr(tok);
 
 	needconst++;
 	if (generic(p->op) == CNST && isint(p->type))
@@ -509,7 +512,8 @@ int intexpr(tok, n) {
 }
 
 /* lvalue - check for lvalue, return pointer to lvalue tree */
-Tree lvalue(p) Tree p; {
+sTree_t lvalue(sTree_t p)
+{
 	if (generic(p->op) == INDIR) {
 		if (unqual(p->type) == voidtype)
 			warning("`%t' used as an lvalue\n", p->type);
@@ -520,8 +524,9 @@ Tree lvalue(p) Tree p; {
 }
 
 /* nullcheck - test if p null; build ((!p ? _YYnull(lineno) : ), p) */
-static Tree nullcheck(p) Tree p; {
-	Tree q, arg;
+static sTree_t nullcheck(sTree_t p)
+{
+	sTree_t q, arg;
 
 	if (needconst)
 		return p;
@@ -533,7 +538,8 @@ static Tree nullcheck(p) Tree p; {
 }
 
 /* pointer - re-type `array of T', `T function' to `ptr to T', `ptr to T function', resp. */
-Tree pointer(p) Tree p; {
+sTree_t pointer(sTree_t p)
+{
 	if (isarray(p->type) && (p->op != RIGHT || p->u.sym == 0))
 		p = retype(p, atop(p->type));
 	else if (isfunc(p->type))
@@ -542,9 +548,10 @@ Tree pointer(p) Tree p; {
 }
 
 /* postfix - parse a postfix expresssion; p is the primary dag */
-static Tree postfix(p) Tree p; {
-	Tree q;
-	Type ty;
+static sTree_t postfix(sTree_t p)
+{
+	sTree_t q;
+	sType_t ty;
 
 	for (;;)
 		switch (t) {
@@ -570,7 +577,7 @@ static Tree postfix(p) Tree p; {
 				p = rvalue(p);
 			continue;
 		case '(': {
-			Coordinate pt;
+			sCoordinate_t pt;
 			p = pointer(p);
 			if (isptr(p->type) && isfunc(p->type->type))
 				ty = p->type->type;
@@ -624,8 +631,8 @@ static Tree postfix(p) Tree p; {
 }
 
 /* prefix - parse a prefix expression */
-static Tree prefix() {
-	Tree p;
+static sTree_t prefix() {
+	sTree_t p;
 
 	switch (t) {
 	case '*':
@@ -678,7 +685,7 @@ static Tree prefix() {
 		t = gettok();
 		p = pointer(prefix());
 		if (isint(p->type)) {
-			Type ty = promote(p->type);
+			sType_t ty = promote(p->type);
 			p = simplify(BCOM, ty, cast(p, ty), 0);
 		} else
 			typeerror(BCOM, p, 0); 
@@ -692,13 +699,13 @@ static Tree prefix() {
 			typeerror(NOT, p, 0); 
 		break;
 	case INCR: case DECR: {
-		Opcode op = t;
+		eOpcode_t op = t;
 		t = gettok();
 		p = incr(op, pointer(prefix()), constnode(1, inttype));
 		break;
 		}
 	case SIZEOF: {
-		Type ty;
+		sType_t ty;
 		t = gettok();
 		p = 0;
 		if (t == '(') {
@@ -731,10 +738,10 @@ static Tree prefix() {
 		t = gettok();
 		if (kind[t] == CHAR || t == ID
 		&& tsym && tsym->sclass == TYPEDEF) {
-			Type ty, ty1 = typename();
+			sType_t ty, ty1 = typename();
 			ty = unqual(ty1);
 			if (isenum(ty)) {
-				Type ty2 = ty->type;
+				sType_t ty2 = ty->type;
 				if (isconst(ty1))
 					ty2 = qual(CONST, ty2);
 				if (isvolatile(ty1))
@@ -744,7 +751,7 @@ static Tree prefix() {
 			}
 			expect(')');
 			if (isstruct(ty) && t == '{') {
-				Symbol t1 = temporary(AUTO, ty);
+				sSymbol_t t1 = temporary(AUTO, ty);
 				if (Aflag >= 2)
 					warning("non-ANSI constructor for `%t'\n", ty);
 				p = tree(RIGHT, ty1, structexp(ty, t1), idnode(t1));
@@ -778,17 +785,17 @@ static Tree prefix() {
 }
 
 /* primary - parse a primary expression */
-static Tree primary() {
-	Tree p;
+static sTree_t primary() {
+	sTree_t p;
 
 	switch (t) {
 	case ID:
 		if (tsym == 0) {
-			Symbol q = install(token, &identifiers, level < LOCAL);
+			sSymbol_t q = install(token, &identifiers, level < LOCAL);
 			q->src = src;
 			t = gettok();
 			if (t == '(') {
-				Symbol r;
+				sSymbol_t r;
 				q->sclass = EXTERN;
 				q->type = func(inttype, 0);
 				if (Aflag >= 1)
@@ -853,7 +860,8 @@ static Tree primary() {
 }
 
 /* promote - the usual integral promotions */
-Type promote(ty) Type ty; {
+sType_t promote(sType_t ty)
+{
 	ty = unqual(ty);
 	if (isunsigned(ty) || ty == longtype)
 		return ty;
@@ -863,7 +871,8 @@ Type promote(ty) Type ty; {
 }
 
 /* right - return (RIGHT, q->type, root(p), q) or just root(p/q) if q/p==0 */
-Tree right(p, q) Tree p, q; {
+sTree_t right(sTree_t p, sTree_t q)
+{
 	assert(p || q);
 	if (p && q)
 		return tree(RIGHT, q->type, root(p), q);
@@ -871,7 +880,8 @@ Tree right(p, q) Tree p, q; {
 }
 
 /* rightkid - dereference RIGHT nodes to find ultimate offspring */
-static Tree rightkid(p) Tree p; {
+static sTree_t rightkid(sTree_t p)
+{
 	while (p && p->op == RIGHT) {
 		assert(p->kids[0] || p->kids[1]);
 		p = p->kids[1] ? p->kids[1] : p->kids[0];
@@ -881,16 +891,16 @@ static Tree rightkid(p) Tree p; {
 }
 
 /* rvalue - convert p to an rvalue */
-Tree rvalue(p) Tree p; {
-	Type ty = deref(p->type);
+sTree_t rvalue(p) sTree_t p; {
+	sType_t ty = deref(p->type);
 
 	ty = unqual(ty);
 	return tree(INDIR + (isunsigned(ty) ? I : ttob(ty)), ty, p, 0);
 }
 
 /* value - convert p from a conditional to a value, if necessary */
-static Tree value(p) Tree p; {
-	Opcode op = generic(rightkid(p)->op);
+static sTree_t value(p) sTree_t p; {
+	eOpcode_t op = generic(rightkid(p)->op);
 
 	if (op == AND || op == OR || op == NOT || op == EQ || op == NE
 	||  op ==  LE || op == LT || op ==  GE || op == GT)

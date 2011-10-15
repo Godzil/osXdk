@@ -1,5 +1,5 @@
 ###
-# osXdk: Compiler
+# osXdk - Compiler: Compiler base on LCC
 #
 # CMakeFile Author: Manoel Trapier <godzil@godzil.net>
 

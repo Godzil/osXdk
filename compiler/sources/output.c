@@ -165,14 +165,14 @@ void vprint(fmt, ap) char *fmt; va_list ap;
 				outs(s ? s : "");
 				break;
 			case 't': {	/* print a type */
-				Type ty = va_arg(ap, Type);
+				sType_t ty = va_arg(ap, sType_t);
 				outtype(ty ? ty : voidtype);
 				break;
 				}
 
 			case 'w': 
 				{	/* print a source coordinate */
-				Coordinate *p = va_arg(ap, Coordinate *);
+				sCoordinate_t *p = va_arg(ap, sCoordinate_t *);
 				if (p->file && *p->file)
 					print("%s(", p->file);
 				print("%d)", p->y);

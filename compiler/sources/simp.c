@@ -4,11 +4,11 @@
 
 int needconst;		/* >=1 if parsing a constant expression */
 
-dclproto(static int add,(double, double, double, double, int));
-dclproto(static Tree addrnode,(Symbol, int, Type));
-dclproto(static int div,(double, double, double, double, int));
-dclproto(static int mul,(double, double, double, double, int));
-dclproto(static int sub,(double, double, double, double, int));
+static int add(double, double, double, double, int);
+static sTree_t addrnode(sSymbol_t, int, sType_t);
+static int div(double, double, double, double, int);
+static int mul(double, double, double, double, int);
+static int sub(double, double, double, double, int);
 
 /* add - return 1 if min <= x+y <= max, 0 otherwise */
 static int add(x, y, min, max, needconst) double x, y, min, max; {
@@ -25,9 +25,10 @@ static int add(x, y, min, max, needconst) double x, y, min, max; {
 }
 
 /* addrnode - create a tree for addressing expression p+n, type ty */
-static Tree addrnode(p, n, ty) Symbol p; Type ty; {
-	Symbol q = (Symbol)talloc(sizeof *q);
-	Tree e;
+static sTree_t addrnode(sSymbol_t p, int n, sType_t ty)
+{
+	sSymbol_t q = (sSymbol_t)talloc(sizeof *q);
+	sTree_t e;
 	static struct symbol z;
 
 	*q = z;
@@ -111,7 +112,7 @@ static int mul(x, y, min, max, needconst) double x, y, min, max; {
 		p = tree(CNST+ttob(TTYPE), TTYPE, 0, 0); EXP; return p; }
 #define commute(L,R) \
 	if (generic(R->op) == CNST && generic(L->op) != CNST) { \
-		Tree t = L; L = R; R = t; }
+		sTree_t t = L; L = R; R = t; }
 #define zerofield(OP,TYPE,VAR) \
 	if (l->op == FIELD && r->op == CNST+TYPE && r->u.v.VAR == 0) \
 		return eqnode(OP, bitnode(BAND, l->kids[0], \
@@ -148,9 +149,10 @@ static int mul(x, y, min, max, needconst) double x, y, min, max; {
 #define identity(X,Y,TYPE,VAR,VAL) if (X->op == CNST+TYPE && X->u.v.VAR == VAL) return Y
 
 /* simplify - build node for op, simplifying and folding constants, if possible */
-Tree simplify(op, ty, l, r) Type ty; Tree l, r; {
+sTree_t simplify(int op, sType_t ty, sTree_t l, sTree_t r)
+{
 	int n;
-	Tree p;
+	sTree_t p;
 
 	if (optype(op) == 0)
 		op += ttob(ty);
@@ -497,7 +499,8 @@ static int sub(x, y, min, max, needconst) double x, y, min, max; {
 }
 
 /* vtoa - return string for the constant v of type ty */
-char *vtoa(ty, v) Type ty; Value v; {
+char *vtoa(sType_t ty, uValue_t v)
+{
 	char buf[50];
 
 	ty = unqual(ty);

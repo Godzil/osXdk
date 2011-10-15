@@ -333,7 +333,7 @@ int parseline(const std::string cInputLine)
 				// A kind of "label eater", really.
 				//
 				// Read define name
-				const char* pcFilename=strtok(NULL," \"*+-;\\\n/\t,()");
+				//const char* pcFilename=strtok(NULL," \"*+-;\\\n/\t,()");
 				/*
 				if (!stricmp(pcFilename,"GenericEditorRoutines.s"))
 				{

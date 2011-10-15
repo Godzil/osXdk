@@ -2,7 +2,7 @@
 #pragma warning( disable : 4996)   // #define _CRT_SECURE_NO_WARNINGS
 
 extern void errout(int er);
-extern void logout(char *s);
+extern void logout(const char *s);
 
 extern int gFlag_ncmos;
 extern int gFlag_cmosfl;

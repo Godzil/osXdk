@@ -64,3 +64,34 @@ There is currently no clear license on the original OSDK. I will contact DBug ab
 	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 	THE SOFTWARE.
+
+	This SDK use theses software:
+
+	Cross-Assembler 65xx V2.2.2 (XA / m6502-oric-none-as)
+	(c) 1989-98 by A.Fachat
+	65816 opcodes and modes coded by Jolse Maginnis
+	Oric C adaptation and debugging by Mickael Pointier
+	Clean Linux port by Jean-Yves Lamoureux
+
+	---
+
+	Peephole-Optimzier V0.12 (opt65 / m6502-oric-none-opt)
+	Written by Daniel Dallmann (aka Poldi)
+	This piece of software is freeware ! So DO NOT sell it !!
+	You may copy and redistribute this file for free, but only with this header
+	unchanged in it. (Or you risc eternity in hell)
+
+	If you've noticed a bug or created an additional feature, let me know.
+	My (internet) email-address is Daniel.Dallmann@studbox.uni-stuttgart.de
+
+	---
+
+	LCC (Currently unkown version) (compiler / m6502-oric-none-cc)
+	With Fabrice Frances' 16 bits 6502 code generator V1.29
+
+	---
+   
+	The 6502 Linker, for the lcc or similar, that produce .s files 
+	to be processed later by a cross assembler 
+
+	Originaly created by Vagelis Blathras

@@ -51,31 +51,42 @@ static int scatter[] = {	/* map characters to random values */
 	1788268214, 836935336, 433233439, 2055041154, 2109864544,
 	247038362, 299641085, 834307717
 };
-static List freenodes;		/* free list nodes */
+static sList_t freenodes;		/* free list nodes */
 
 /* append - append x to list, return new list */
-List append(x, list) Generic x; List list; {
-	List new;
+sList_t append(void *x, sList_t list)
+{
+	sList_t new;
 
-	if (new = freenodes)
+   new = freenodes;
+   
+	if (new)
+   {
 		freenodes = freenodes->link;
+   }
 	else
-		new = (List)alloc(sizeof *new);
-	if (list) {
+   {
+		new = (sList_t)alloc(sizeof *new);
+   }
+	if (list)
+   {
 		new->link = list->link;
 		list->link = new;
-	} else
+	}
+   else
+   {
 		new->link = new;
+   }
 	new->x = x;
 	return new;
 }
 
 /* length - # elements in list */
-int length(list) List list; {
+int length(list) sList_t list; {
 	int n = 0;
 
 	if (list) {
-		List lp = list;
+		sList_t lp = list;
 		do n++;
 		while ((lp = lp->link) != list);
 	}
@@ -83,13 +94,13 @@ int length(list) List list; {
 }
 
 /* ltoa - convert list to an 0-terminated array in a[0..length(list)] */
-Generic *ltoa(list, a) List list; Generic a[]; {
+void **ltoa(sList_t list, void *a[]) {
 	int i = 0;
 
 	if (a == 0)
-		a = (Generic *)talloc((length(list) + 1)*sizeof a[0]);
+		a = (void **)talloc((length(list) + 1)*sizeof a[0]);
 	if (list) {
-		List lp = list;
+		sList_t lp = list;
 		do {
 			lp = lp->link;
 			a[i++] = lp->x;
@@ -103,7 +114,8 @@ Generic *ltoa(list, a) List list; Generic a[]; {
 }
 
 /* string - save copy of (null-terminated ) str, return pointer to copy */
-char *string(str) char *str; {
+char *string(char *str)
+{
 	char *s;
 
 	for (s = str; *s; s++)

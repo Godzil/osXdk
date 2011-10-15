@@ -18,11 +18,11 @@ static char *callname;		/* current function called name */
 static char *NamePrefix;	/* Prefix for all local names */
 static int omit_frame;		/* if no params and no locals */
 static int optimizelevel=3;	/* set by command line option -On */
-static Symbol temp[32];		/* 32 symbols pointing to temporary variables... */
+static sSymbol_t temp[32];		/* 32 symbols pointing to temporary variables... */
 		/* (8 last ones for floating point) */
 static char *regname[8];	/* 8 register variables names */
 
-static Node *linearize(Node p, Node *last, Node next) 
+static sNode_t *linearize(sNode_t p, sNode_t *last, sNode_t next) 
 {
 	if (p && !p->x.visited) 
 	{
@@ -122,7 +122,7 @@ void progend(void)
 
 }
 
-void defsymbol(Symbol p) 
+void defsymbol(sSymbol_t p) 
 {
 	if (p->x.name) return;
 	if (p->scope == CONSTANTS) 
@@ -145,10 +145,10 @@ void defsymbol(Symbol p)
 	p->x.adrmode = 'C';
 }
 
-void export(Symbol p) {}
-void import(Symbol p) {}
+void export(sSymbol_t p) {}
+void import(sSymbol_t p) {}
 void segment(int s) {}
-void global(Symbol p) 
+void global(sSymbol_t p) 
 { 
 	print("%s\n", p->x.name); 
 }
@@ -192,7 +192,7 @@ void printfloat(double val)
 }
 
 
-void defconst(int ty, Value v) 
+void defconst(int ty, uValue_t v) 
 {
 	switch (ty) 
 	{
@@ -252,7 +252,7 @@ void defstring(int len, char *s)
 }
 
 
-void defaddress(Symbol p) 
+void defaddress(sSymbol_t p) 
 { 
 	print("\tDW(%s)\n",p->x.name); 
 }
@@ -262,7 +262,7 @@ void space(int n)
 	print("\tZERO(%d)\n",n); 
 }
 
-int allocreg(Symbol p) 
+int allocreg(sSymbol_t p) 
 {
 	if (nbregs==8 || p->type->size==5) return 0;
 	p->x.name=regname[nbregs];
@@ -271,7 +271,7 @@ int allocreg(Symbol p)
 	return 1;
 }
 
-void function(Symbol f, Symbol caller[], Symbol callee[], int ncalls) 
+void function(sSymbol_t f, sSymbol_t caller[], sSymbol_t callee[], int ncalls) 
 {
 	int i;
 
@@ -303,7 +303,7 @@ void function(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
 	emitcode();
 }
 
-void local(Symbol p) 
+void local(sSymbol_t p) 
 {
 	if (optimizelevel>1 && p->sclass==REGISTER && allocreg(p))
 		return; /* allocreg ok */
@@ -314,24 +314,24 @@ void local(Symbol p)
 	offset+=p->type->size;
 }
 
-void address(Symbol q, Symbol p, int n) 
+void address(sSymbol_t q, sSymbol_t p, int n) 
 {
 	q->x.name = stringf("%s%s%d", p->x.name, n >= 0 ? "+" : "", n);
 	q->x.adrmode=p->x.adrmode;
 }
 
-void blockbeg(Env *e) 
+void blockbeg(sEnv_t *e) 
 { 
 	e->offset = offset; 
 }
 
-void blockend(Env *e) 
+void blockend(sEnv_t *e) 
 {
 	if (offset > localsize) localsize = offset;
 	offset = e->offset;
 }
 
-static void gettmp(Node p) 
+static void gettmp(sNode_t p) 
 {
 	int t;
 /*
@@ -376,7 +376,7 @@ static void gettmp(Node p)
 	perror("Too complex expression"); exit(1);
 }
 
-static void releasetmp(Node p) 
+static void releasetmp(sNode_t p) 
 {
 	if (!p) return;
 	assert(p->count!=0);
@@ -400,7 +400,7 @@ static void releasetmp(Node p)
 	}
 }
 			
-static int needtmp(Node p) 
+static int needtmp(sNode_t p) 
 {
 	switch (generic(p->op)) 
 	{
@@ -465,7 +465,7 @@ static int needtmp(Node p)
 	}
 }
 
-static void tmpalloc(Node p) 
+static void tmpalloc(sNode_t p) 
 {
 	p->x.optimized=0;
 	p->x.name="*******";
@@ -511,7 +511,7 @@ static void tmpalloc(Node p)
 			    && generic(p->kids[1]->op)!=ADDRL
 			    && generic(p->kids[1]->op)!=CNST )
 			{
-				Node k=p->kids[1];
+				sNode_t k=p->kids[1];
 				p->x.optimized=1;
 				k->x.optimized=1;
 				k->x.result=p->kids[0]->x.result;
@@ -526,16 +526,16 @@ static void tmpalloc(Node p)
 	if (needtmp(p)) gettmp(p);
 }
 
-Node gen(Node p) 
+sNode_t gen(sNode_t p) 
 {
-	Node head, *last;
+	sNode_t head, *last;
 	for (last = &head; p; p = p->link)
 		last = linearize(p, last, 0);
 	for (p = head; p; p = p->x.next) tmpalloc(p);
 	return head;
 }
 
-void asmcode(char *str, Symbol argv[]) 
+void asmcode(char *str, sSymbol_t argv[]) 
 {
 	for ( ; *str; str++)
 		if (*str == '%' && str[1] >= 0 && str[1] <= 9)
@@ -545,7 +545,7 @@ void asmcode(char *str, Symbol argv[])
 	print("\n");
 }
 
-static Node a,b,r;
+static sNode_t a,b,r;
 
 void binary(char *inst) 
 {
@@ -581,13 +581,13 @@ void compare(char *inst)
 	print("%s,%s,%s)\n", a->x.name, b->x.name, r->syms[0]->x.name);
 }
 
-char adrmode(Node p) 
+char adrmode(sNode_t p) 
 {
 	if (p->x.adrmode!='D') return p->x.adrmode;
 	return p->x.name[0]=='_' ? 'D': 'Z';
 }
 
-void emitdag(Node p) 
+void emitdag(sNode_t p) 
 {
 	a = p->kids[0];
 	b = p->kids[1]; 
@@ -951,7 +951,7 @@ void emitdag(Node p)
 	}
 }
 
-void emit(Node p) 
+void emit(sNode_t p) 
 {
 	for (; p; p=p->x.next) 
 	{

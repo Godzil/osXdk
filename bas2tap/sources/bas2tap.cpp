@@ -5,12 +5,12 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#ifdef __WINDOWS__
 #include <conio.h>
+#endif
 #include <string.h>
 
-
-
-char *keywords[]= 
+const char *keywords[] = 
 { 
 	"END","EDIT","STORE","RECALL","TRON","TROFF","POP","PLOT",
 	"PULL","LORES","DOKE","REPEAT","UNTIL","FOR","LLIST","LPRINT","NEXT","DATA",
@@ -49,7 +49,7 @@ void Tap2Bas(unsigned char *ptr_buffer,size_t file_size)
 		i+=2;
 		printf(" %u ",ptr_buffer[i]+(ptr_buffer[i+1]<<8));
 		i+=2;
-		while (car=ptr_buffer[i++]) 
+		while ((car=ptr_buffer[i++])) 
 		{
 			if (car<128) 
 				putchar(car);
@@ -240,7 +240,7 @@ void Bas2Tap(const char *pSourceFile,const char *pDestFile,bool bAutoRun,bool bU
 
 #define NB_ARG	2
 
-void main(int argc, char **argv)
+int main(int argc, char **argv)
 {
 	//
 	// Some initialization for the common library
@@ -327,5 +327,5 @@ void main(int argc, char **argv)
 		Tap2Bas(ptr_buffer,file_size);
 	}
 
-	exit(0);
+	return 0;
 }

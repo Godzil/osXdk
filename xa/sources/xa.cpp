@@ -12,14 +12,14 @@
 #include <time.h>
 /* structs and defs */
 
-#include "common.h"
+#include <common.h>
 
 #include "xah.h"
 #include "xah2.h"
 
 /* exported functions are defined here */
 
-#include "xar.h"
+#include "xa_refactor.h"
 #include "xa.h"
 #include "xam.h"
 #include "xal.h"
@@ -60,12 +60,16 @@ static int align = 1;
 
 static void printstat(void);
 static void usage(void);
+
+#if 0
 static int	setfext(char*,char*);
+static long ga_p1(void);
+static long gm_p1(void);
+#endif
+
 static int	pass1(void);
 static ErrorCode getline(char*);
 static void lineout(void);
-static long ga_p1(void);
-static long gm_p1(void);
 int unlink(const char *);
 /* text */
 
@@ -162,7 +166,7 @@ int main(int argc,char *argv[])
 		return 1;
 	}
 
-	char* ptr_output_filename	="a.o65";
+	char* ptr_output_filename	=(char *)"a.o65";
 	char* ptr_error_filename	=NULL;
 	char* ptr_symbols_filename	=NULL;
 
@@ -525,7 +529,7 @@ static void printstat(void)
 
 #define fputw(a,fp) fputc((a)&255,fp);fputc((a>>8)&255,fp)
 
-
+#if 0
 static int setfext(char *s, char *ext)
 {
 	int j,i=(int)strlen(s);
@@ -553,7 +557,7 @@ static int setfext(char *s, char *ext)
 
 	return 0;
 }
-
+#endif
 
 #ifndef abs
 #define abs(a) ((a)>=0 ? a : -a)
@@ -690,6 +694,9 @@ static int pass1(void)
 
 		switch (gCurrentSegment)
 		{
+        default: 
+            break;
+              
 		case eSEGMENT_ABS:
 		case eSEGMENT_TEXT:
 			SectionTextLenght+= outlen;
@@ -761,7 +768,7 @@ static char *ertxt[] = { "Syntax","Label definiert",
 "NoBlk","NoKey","NoLine","OKDef","DSB","NewLine",
 "NewFile","CMOS-Befehl","pp:Falsche Anzahl Parameter" };
 */
-static char *ertxt[] =
+static const char *ertxt[] =
 {
 	"Syntax",
 	"Label defined",
@@ -851,7 +858,7 @@ static ErrorCode getline(char *s)
 			if (ec==E_NEWFILE)
 			{
 				unsigned int line=gPreprocessor.m_CurrentFile->GetCurrentLine();
-				fprintf(gErrorFileHandle,"getline File:%s (%u)\r\n",gPreprocessor.m_CurrentFile->GetCurrentFileName().c_str(),line);
+                fprintf(gErrorFileHandle,"getline File:%s (%u)\r\n",gPreprocessor.m_CurrentFile->GetCurrentFileName().c_str(),line);
 				afile->WriteShort(0);
 				afile->WriteByte(T_FILE);
 				afile->WriteUShort(line);
@@ -937,7 +944,7 @@ void errout(int er)
 }
 
 
-void logout(char *s)
+void logout(const char *s)
 {
 	fprintf(stderr, "%s",s);
 	if (gErrorFileHandle)

@@ -7,10 +7,10 @@ char kind[] = {		/* token kind, i.e., classification */
 #define xx(a,b,c,d,e,f,g) f,
 #include "token.h"
 };
-Coordinate src;		/* current source coordinate */
+sCoordinate_t src;		/* current source coordinate */
 enum tokencode t;
 char *token;		/* current token */
-Symbol tsym;		/* symbol table entry for current token */
+sSymbol_t tsym;		/* symbol table entry for current token */
 
 static struct symbol tval;	/* symbol for constants */
 
@@ -277,14 +277,14 @@ static unsigned char map[256] =
 /* 377     */	BAD,
 };
 
-dclproto(static char *asmargs,(Symbol, Symbol [], int));
+dclproto(static char *asmargs,(sSymbol_t, sSymbol_t [], int));
 dclproto(static void assem,(void));
 dclproto(static int backslash,(int));
-dclproto(static Symbol fcon,(void));
-dclproto(static Symbol icon,(unsigned int, int));
+dclproto(static sSymbol_t fcon,(void));
+dclproto(static sSymbol_t icon,(unsigned int, int));
 
 /* asmargs - break out %name in string p, fill in argv, returned edited string */
-static char *asmargs(p, argv, size) Symbol p, argv[]; {
+static char *asmargs(p, argv, size) sSymbol_t p, argv[]; {
 	int n = 0;
 	char *s1, *s2, str[MAXLINE];
 
@@ -323,7 +323,7 @@ static void assem() {
 	expect('(');
 	if (t == SCON) {
 		char *s;
-		Symbol *argv = (Symbol *)talloc(11*sizeof(Symbol *));
+		sSymbol_t *argv = (sSymbol_t *)talloc(11*sizeof(sSymbol_t *));
 		s = asmargs(tsym, argv, 11);
 		if (fname) {
 			walk(0, 0, 0);
@@ -404,7 +404,7 @@ static int errno;
 #endif
 
 /* fcon - scan for tail of a floating constant, set token, return symbol */
-static Symbol fcon() 
+static sSymbol_t fcon() 
 {
 	char *s = token;
 	int n = 0;
@@ -806,7 +806,7 @@ int gettok() {
 	return EOI;
 }
 /* icon - scan for tail of an integer constant n, set token, return symbol */
-static Symbol icon(n, overflow) unsigned n; {
+static sSymbol_t icon(n, overflow) unsigned n; {
 	int u = 0;
 
 	if (*cp == 'u' || *cp == 'U')

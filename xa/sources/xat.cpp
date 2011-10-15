@@ -5,7 +5,7 @@
 #include "xah.h"
 #include "xah2.h"
 
-#include "xar.h"
+#include "xa_refactor.h"
 #include "xa.h"
 #include "xaa.h"
 #include "xal.h"
@@ -30,7 +30,7 @@ static signed char Asc2Pet(signed char c);
 
 static int curr,dft=0;
 
-static char *kt[] =
+static const char *kt[] =
 { 
      "adc","and","asl","bbr","bbs","bcc","bcs","beq",
      "bit","bmi",

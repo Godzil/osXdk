@@ -5,7 +5,7 @@
 
 #include "xau.h"		// UndefinedLabels
 #include "xao.h"		// Options
-#include "xar.h"		// Relocation
+#include "xa_refactor.h"		// Relocation
 
 
 //#define		C64_ASCII

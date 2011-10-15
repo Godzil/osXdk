@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 #include "xah.h"
-#include "xar.h"
+#include "xa_refactor.h"
 #include "xa.h"
 #include "xal.h"
 #include "xao.h"
@@ -49,9 +49,9 @@ void r_mode(int m)
 Relocation::Relocation(bool is_text) :
 	m_is_text(is_text),
 	rlist(NULL),
-	first(-1),
-	mlist(0),
-	nlist(0)
+    mlist(0),
+    nlist(0),
+    first(-1)
 {
 }
 

@@ -8,29 +8,29 @@ float density = 0.5;		/* minimum switch density */
 int refinc = 1000;		/* amount by which ref field is incremented */
 
 static struct equate {	/* deferred equates: */
-	Symbol new;		/* new label, i.e., label being defined */
-	Symbol old;		/* old label */
+	sSymbol_t new;		/* new label, i.e., label being defined */
+	sSymbol_t old;		/* old label */
 	struct equate *oldlink;	/* pointer to equate structure for old=x */
 	struct equate *link;	/* next equate on list */
 } *equlist;			/* list of deferred equates */
 struct swtch {		/* switch statement data: */
-	Symbol sym;		/* local holding the switch value */
+	sSymbol_t sym;		/* local holding the switch value */
 	int lab;		/* label of selection code */
-	Symbol deflab;		/* default label */
+	sSymbol_t deflab;		/* default label */
 	int ncases;		/* number of cases */
 	int size;		/* size of value & label arrays */
 	int    *values;		/* value, label pairs */
-	Symbol *labels;
+	sSymbol_t *labels;
 };
 
 dclproto(static void branch,(int));
 dclproto(static void caselabel,(struct swtch *, int, int));
-dclproto(static void cmp,(int, Symbol, int, int));
+dclproto(static void cmp,(int, sSymbol_t, int, int));
 dclproto(static void dostmt,(int, struct swtch *, int));
-dclproto(static int foldcond,(Tree, Tree));
+dclproto(static int foldcond,(sTree_t, sTree_t));
 dclproto(static void forstmt,(int, struct swtch *, int));
 dclproto(static void ifstmt,(int, int, struct swtch *, int));
-dclproto(static Symbol localaddr,(Tree));
+dclproto(static sSymbol_t localaddr,(sTree_t));
 dclproto(static void stmtlabel,(char *));
 dclproto(static int swcode,(struct swtch *, int *, int, int, int));
 dclproto(static void swgen,(struct swtch *));
@@ -48,7 +48,7 @@ static void branch(lab) {
 	if (lab)
 		while (cp->kind == Label && islabel(cp->u.node)
 		&& cp->u.node->syms[0]->u.l.label != lab) {
-			Symbol old = findlabel(lab);
+			sSymbol_t old = findlabel(lab);
 			equatelab(cp->u.node->syms[0], old);
 			old->ref++;
 			if (cp->prev->next = cp->next)
@@ -72,10 +72,10 @@ static void caselabel(swp, val, lab) struct swtch *swp; {
 
 	if (swp->ncases >= swp->size) {
 		int    *vals = swp->values;
-		Symbol *labs = swp->labels;
+		sSymbol_t *labs = swp->labels;
 		swp->size *= 2;
 		swp->values = (int    *) talloc(swp->size*sizeof (int));
-		swp->labels = (Symbol *) talloc(swp->size*sizeof (Symbol));
+		swp->labels = (sSymbol_t *) talloc(swp->size*sizeof (sSymbol_t));
 		for (k = 0; k < swp->ncases; k++) {
 			swp->values[k] = vals[k];
 			swp->labels[k] = labs[k];
@@ -95,12 +95,12 @@ static void caselabel(swp, val, lab) struct swtch *swp; {
 }
 
 /* cmp - generate code for `if (p op n) goto lab' for integer n */
-static void cmp(op, p, n, lab) Symbol p; {
+static void cmp(op, p, n, lab) sSymbol_t p; {
 	listnodes(eqnode(op, cast(idnode(p), inttype), constnode(n, inttype)), lab, 0);
 }
 
 /* definelab - define a label */
-void definelab(lab) {
+void definelab(int lab) {
 	Code cp;
 
 	walk(0, 0, 0);
@@ -120,7 +120,7 @@ void definelab(lab) {
 }
 
 /* definept - define an execution point n: current token at current pc */
-Code definept(p) Coordinate *p; {
+Code definept(p) sCoordinate_t *p; {
 	int n;
 	Code cp = code(Defpoint);
 
@@ -129,8 +129,8 @@ Code definept(p) Coordinate *p; {
 	if (ncalled > 0 && (n = findcount(src.file, src.x, src.y)) >= 0)
 		refinc = 1000*n/ncalled + 1;
 	if (events.points) {
-		Tree e = 0;
-		apply(events.points, (Generic)&cp->u.point.src, (Generic)&e);
+		sTree_t e = 0;
+		apply(events.points, (void *)&cp->u.point.src, (void *)&e);
 		if (e)
 			listnodes(e, 0, 0);
 	}
@@ -155,7 +155,7 @@ static void dostmt(lab, swp, lev) struct swtch *swp; {
 }
 
 /* equatelab - add new=old to list of deferred equates */
-void equatelab(new, old) Symbol new, old; {
+void equatelab(new, old) sSymbol_t new, old; {
 	struct equate *e = (struct equate *) talloc(sizeof *e);
 
 	e->new = new;
@@ -177,9 +177,9 @@ void flushequ() {
 }
 
 /* foldcond - check if initial test in for(e1;e2;e3) S is necessary */
-static int foldcond(e1, e2) Tree e1, e2; {
-	Opcode op = generic(e2->op);
-	Symbol v;
+static int foldcond(e1, e2) sTree_t e1, e2; {
+	eOpcode_t op = generic(e2->op);
+	sSymbol_t v;
 
 	if (e1 == 0 || e2 == 0)
 		return 0;
@@ -202,8 +202,8 @@ static int foldcond(e1, e2) Tree e1, e2; {
 
 /* forstmt - for ( [expr1] ; [expr2] ; [expr3] ) statement */
 static void forstmt(lab, swp, lev) struct swtch *swp; {
-	Tree e1, e2, e3;
-	Coordinate pt2, pt3;
+	sTree_t e1, e2, e3;
+	sCoordinate_t pt2, pt3;
 	static char follow[] = { IF, ID, '}', 0 };
 
 	e1 = e2 = e3 = 0;
@@ -285,7 +285,7 @@ static void ifstmt(lab, loop, swp, lev) struct swtch *swp; {
 }
 
 /* localaddr - returns q if p yields the address of local/parameter q; otherwise returns 0 */
-static Symbol localaddr(p) Tree p; {
+static sSymbol_t localaddr(p) sTree_t p; {
 	if (p == 0)
 		return 0;
 	switch (generic(p->op)) {
@@ -298,13 +298,13 @@ static Symbol localaddr(p) Tree p; {
 			return localaddr(p->kids[1]);
 		return localaddr(p->kids[0]);
 	case COND: {
-		Symbol q;
+		sSymbol_t q;
 		if (p->kids[1] && (q = localaddr(p->kids[1])))
 			return q;
 		return localaddr(p->kids[2]);
 		}
 	default: {
-		Symbol q;
+		sSymbol_t q;
 		if (p->kids[0] && (q = localaddr(p->kids[0])))
 			return q;
 		return localaddr(p->kids[1]);
@@ -313,13 +313,13 @@ static Symbol localaddr(p) Tree p; {
 }
 
 /* retcode - return p from the current function */
-void retcode(p, lab) Tree p; {
+void retcode(p, lab) sTree_t p; {
 	if (p == 0) {
 		if (events.returns)
-			apply(events.returns, (Generic)cfunc, (Generic)0);
+			apply(events.returns, (void *)cfunc, (void *)0);
 		p = tree(RET+V, voidtype, 0, 0);
 	} else {
-		Type ty;
+		sType_t ty;
 		p = pointer(p);
 		if (ty = assign(freturn(cfunc->type), p))
 			p = cast(p, ty);
@@ -335,19 +335,19 @@ void retcode(p, lab) Tree p; {
 				p = asgnnode(ASGN, rvalue(idnode(retv)), p);
 			walk(p, 0, 0);
 			if (events.returns)
-				apply(events.returns, (Generic)cfunc, (Generic)rvalue(idnode(retv)));
+				apply(events.returns, (void *)cfunc, (void *)rvalue(idnode(retv)));
 			p = tree(RET+V, voidtype, 0, 0);
 		} else {
 			if (events.returns) {
-				Symbol t1 = genident(AUTO, p->type, level);
+				sSymbol_t t1 = genident(AUTO, p->type, level);
 				addlocal(t1);
 				walk(asgn(t1, p), 0, 0);
-				apply(events.returns, (Generic)cfunc, (Generic)idnode(t1));
+				apply(events.returns, (void *)cfunc, (void *)idnode(t1));
 				p = idnode(t1);
 			}
 			p = cast(p, promote(p->type));
 			if (isptr(p->type)) {
-				Symbol q = localaddr(p);
+				sSymbol_t q = localaddr(p);
 				if (q && (q->computed || q->generated))
 					warning("pointer to a %s is an illegal return value\n",
 						q->scope == PARAM ? "parameter" : "local");
@@ -391,7 +391,7 @@ void statement(loop, swp, lev) struct swtch *swp; {
 			error("illegal case label\n");
 		definelab(lab = genlabel(1));
 		while (t == CASE) {
-			Tree p;
+			sTree_t p;
 			t = gettok();
 			p = constexpr(':');
 			if (generic(p->op) == CNST && isint(p->type)) {
@@ -470,7 +470,7 @@ void statement(loop, swp, lev) struct swtch *swp; {
 		definept(0);
 		t = gettok();
 		if (t == ID) {
-			Symbol p = lookup(token, labels[0]);
+			sSymbol_t p = lookup(token, labels[0]);
 			if (p == 0) {
 				p = install(token, &labels[0], 0);
 				p->u.l.label = genlabel(1);
@@ -497,7 +497,7 @@ void statement(loop, swp, lev) struct swtch *swp; {
 			error("unrecognized statement\n");
 			t = gettok();
 		} else {
-			Tree e = expr0(0);
+			sTree_t e = expr0(0);
 			listnodes(e, 0, 0);
 			if (glevel > 1 || nodecount == 0 || nodecount > 200)
 				walk(0, 0, 0);
@@ -515,7 +515,7 @@ void statement(loop, swp, lev) struct swtch *swp; {
 
 /* stmtlabel - label : */
 static void stmtlabel(label) char *label; {
-	Symbol p;
+	sSymbol_t p;
 
 	if ((p = lookup(label, labels[0])) == 0) {
 		p = install(label, &labels[0], 0);
@@ -583,7 +583,7 @@ static int swcode(swp, b, lb, ub, n) struct swtch *swp; int b[];
 		}
 	} else {
 		int lab = genlabel(1);
-		Symbol tab = genident(STATIC, array(voidptype, u - l + 1, 0), GLOBAL);
+		sSymbol_t tab = genident(STATIC, array(voidptype, u - l + 1, 0), GLOBAL);
 		cmp(LT, swp->sym, swp->values[l], lolab ? lolab : lab);
 		cmp(GT, swp->sym, swp->values[u], hilab ? hilab : lab);
 		walk(tree(JUMP, voidtype, rvalue((*opnode['+'])(ADD, pointer(idnode(tab)),
@@ -636,7 +636,7 @@ static void swgen(swp) struct swtch *swp; {
 
 /* swstmt - switch ( expression ) statement */
 static void swstmt(loop, lab, lev) {
-	Tree e;
+	sTree_t e;
 	struct swtch sw;
 	Code head, tail;
 
@@ -665,7 +665,7 @@ static void swstmt(loop, lab, lev) {
 	sw.ncases = 0;
 	sw.size = SWITCHSIZE;
 	sw.values = (int    *) talloc(SWITCHSIZE*sizeof (int));
-	sw.labels = (Symbol *) talloc(SWITCHSIZE*sizeof (Symbol));
+	sw.labels = (sSymbol_t *) talloc(SWITCHSIZE*sizeof (sSymbol_t));
 	if ((refinc /= 10) == 0)
 		refinc = 1;
 	statement(loop, &sw, lev);
@@ -697,8 +697,8 @@ static void visit(p) struct equate *p; {
 
 /* whilestmt - while ( expression ) statement */
 static void whilestmt(lab, swp, lev) struct swtch *swp; {
-	Coordinate pt;
-	Tree e;
+	sCoordinate_t pt;
+	sTree_t e;
 
 	refinc *= 10;
 	t = gettok();

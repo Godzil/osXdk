@@ -179,7 +179,7 @@ typedef enum opcode
 	COND=MAXOP+3*16,
 	RIGHT=MAXOP+4*16,
 	FIELD=MAXOP+5*16
-} Opcode;
+} eOpcode_t;
 #endif /* generic */
 
 #ifdef NEEDNAMES

@@ -2,23 +2,23 @@
 
 #include "c.h"
 
-dclproto(static Tree addnode,(int, Tree, Tree));
-dclproto(static Tree andnode,(int, Tree, Tree));
-dclproto(static Type binary,(Type, Type));
-dclproto(static Tree cmpnode,(int, Tree, Tree));
-dclproto(static int compatible,(Type, Type));
-dclproto(static Tree mulnode,(int, Tree, Tree));
-dclproto(static Tree subnode,(int, Tree, Tree));
+dclproto(static sTree_t addnode,(int, sTree_t, sTree_t));
+dclproto(static sTree_t andnode,(int, sTree_t, sTree_t));
+dclproto(static sType_t binary,(sType_t, sType_t));
+dclproto(static sTree_t cmpnode,(int, sTree_t, sTree_t));
+dclproto(static int compatible,(sType_t, sType_t));
+dclproto(static sTree_t mulnode,(int, sTree_t, sTree_t));
+dclproto(static sTree_t subnode,(int, sTree_t, sTree_t));
 
-dclproto(Tree (*opnode[]),(int, Tree, Tree)) = {
+dclproto(sTree_t (*opnode[]),(int, sTree_t, sTree_t)) = {
 #define xx(a,b,c,d,e,f,g) e,
 #include "token.h"
 };
 
 /* addnode - construct tree for l + r */
-static Tree addnode(op, l, r) Tree l, r; {
+static sTree_t addnode(op, l, r) sTree_t l, r; {
 	int n;
-	Type ty = inttype;
+	sType_t ty = inttype;
 
 	if (isarith(l->type) && isarith(r->type)) {
 		ty = binary(l->type, r->type);
@@ -40,15 +40,15 @@ static Tree addnode(op, l, r) Tree l, r; {
 }
 
 /* andnode - construct tree for l [&& ||] r */
-static Tree andnode(op, l, r) Tree l, r; {
+static sTree_t andnode(op, l, r) sTree_t l, r; {
 	if (!isscalar(l->type) || !isscalar(r->type))
 		typeerror(op, l, r);
 	return simplify(op, inttype, cond(l), cond(r));
 }
 
 /* asgnnode - construct tree for l = r */
-Tree asgnnode(op, l, r) Tree l, r; {
-	Type aty, ty;
+sTree_t asgnnode(op, l, r) sTree_t l, r; {
+	sType_t aty, ty;
 
 	r = pointer(r);
 	if ((ty = assign(l->type, r)) == 0) {
@@ -113,7 +113,7 @@ Tree asgnnode(op, l, r) Tree l, r; {
 }
 
 /* binary - usual arithmetic conversions, return target type */
-static Type binary(xty, yty) Type xty, yty; {
+static sType_t binary(xty, yty) sType_t xty, yty; {
 	if (isdouble(xty) || isdouble(yty))
 		return doubletype;
 	if (xty == floattype || yty == floattype)
@@ -124,8 +124,8 @@ static Type binary(xty, yty) Type xty, yty; {
 }
 
 /* bitnode - construct tree for l [& | ^ %] r */
-Tree bitnode(op, l, r) Tree l, r; {
-	Type ty = inttype;
+sTree_t bitnode(op, l, r) sTree_t l, r; {
+	sType_t ty = inttype;
 
 	if (isint(l->type) && isint(r->type)) {
  		ty = binary(l->type, r->type);
@@ -143,19 +143,19 @@ Tree bitnode(op, l, r) Tree l, r; {
 }
 
 /* callnode - construct call node to f, return type ty, arguments args */
-Tree callnode(f, ty, args) Tree f, args; Type ty; {
-	Tree p;
+sTree_t callnode(f, ty, args) sTree_t f, args; sType_t ty; {
+	sTree_t p;
 
 	if (args)
 		f = tree(RIGHT, f->type, args, f);
 	if (isstruct(ty)) {
-		Symbol t1 = temporary(AUTO, unqual(ty));
+		sSymbol_t t1 = temporary(AUTO, unqual(ty));
 		if (ty->size == 0)
 			error("illegal use of incomplete type `%t'\n", ty);
 		p = tree(RIGHT, ty, tree(CALL+B, ty, f, lvalue(idnode(t1))),
 			idnode(t1));
 	} else {
-		Type rty = ty;
+		sType_t rty = ty;
 		if (isenum(ty))
 			rty = unqual(ty)->type;
 		else if (isptr(ty))
@@ -168,8 +168,8 @@ Tree callnode(f, ty, args) Tree f, args; Type ty; {
 }
 
 /* cmpnode - construct tree for l [< <= >= >] r */
-static Tree cmpnode(op, l, r) Tree l, r; {
-	Type ty = unsignedtype;
+static sTree_t cmpnode(op, l, r) sTree_t l, r; {
+	sType_t ty = unsignedtype;
 
 	if (isarith(l->type) && isarith(r->type)) {
 		ty = binary(l->type, r->type);
@@ -184,7 +184,7 @@ static Tree cmpnode(op, l, r) Tree l, r; {
 }
 
 /* compatible - are ty1 & ty2 sans qualifiers pointers to compatible object or incomplete types? */
-static int compatible(ty1, ty2) Type ty1, ty2; {
+static int compatible(ty1, ty2) sType_t ty1, ty2; {
 	if (isptr(ty1) && isptr(ty2)) {
 		do {
 			ty1 = unqual(ty1->type);
@@ -196,10 +196,10 @@ static int compatible(ty1, ty2) Type ty1, ty2; {
 }
 
 /* condnode - build a tree for e ? l : r */
-Tree condnode(e, l, r) Tree e, l, r; {
-	Symbol t1 = 0;
-	Type ty = 0, lty = l->type, rty = r->type;
-	Tree p;
+sTree_t condnode(e, l, r) sTree_t e, l, r; {
+	sSymbol_t t1 = 0;
+	sType_t ty = 0, lty = l->type, rty = r->type;
+	sTree_t p;
 	
 	if (isarith(lty) && isarith(rty)) {
 		ty = binary(lty, rty);
@@ -235,7 +235,7 @@ Tree condnode(e, l, r) Tree e, l, r; {
 		e = cast(e, unsignedtype);
 		return retype(e->u.v.u ? l : r, ty);
 	} else if (ty != voidtype && ty->size > 0) {
-		Opcode op = generic(e->op);
+		eOpcode_t op = generic(e->op);
 		t1 = temporary(REGISTER, ty);
 		l = root(asgn(t1, l));
 		if (op != AND && op != OR && op != NOT && op != EQ && op != NE
@@ -254,8 +254,8 @@ Tree condnode(e, l, r) Tree e, l, r; {
 }
 
 /* constnode - return a tree for a constant n of type ty (int or unsigned) */
-Tree constnode(n, ty) unsigned n; Type ty; {
-	Tree p;
+sTree_t constnode(n, ty) unsigned n; sType_t ty; {
+	sTree_t p;
 
 	if (isarray(ty))
 		p = tree(CNST+P, atop(ty), 0, 0);
@@ -266,7 +266,7 @@ Tree constnode(n, ty) unsigned n; Type ty; {
 }
 
 /* eqnode - construct tree for l [== !=] r */
-Tree eqnode(op, l, r) Tree l, r; {
+sTree_t eqnode(op, l, r) sTree_t l, r; {
 	if (isint(l->type) && isptr(r->type))
 		return eqnode(op, r, l);
 	if (isptr(l->type) && isint(r->type)) {
@@ -289,8 +289,8 @@ Tree eqnode(op, l, r) Tree l, r; {
 }
 
 /* mulnode - construct tree for l [* /] r */
-static Tree mulnode(op, l, r) Tree l, r; {
-	Type ty = inttype;
+static sTree_t mulnode(op, l, r) sTree_t l, r; {
+	sType_t ty = inttype;
 
 	if (isarith(l->type) && isarith(r->type)) {
 		ty = binary(l->type, r->type);
@@ -302,8 +302,8 @@ static Tree mulnode(op, l, r) Tree l, r; {
 }
 
 /* shnode - construct tree for l [>> <<] r */
-Tree shnode(op, l, r) Tree l, r; {
-	Type ty = inttype;
+sTree_t shnode(op, l, r) sTree_t l, r; {
+	sType_t ty = inttype;
 
 	if (isint(l->type) && isint(r->type)) {
 		ty = promote(l->type);
@@ -315,9 +315,9 @@ Tree shnode(op, l, r) Tree l, r; {
 }
 
 /* subnode - construct tree for l - r */
-static Tree subnode(op, l, r) Tree l, r; {
+static sTree_t subnode(op, l, r) sTree_t l, r; {
 	int n;
-	Type ty = inttype;
+	sType_t ty = inttype;
 
 	if (isarith(l->type) && isarith(r->type)) {
 		ty = binary(l->type, r->type);
@@ -343,18 +343,19 @@ static Tree subnode(op, l, r) Tree l, r; {
 }
 
 /* typeerror - issue "operands of op have illegal types `l' and `r'" */
-void typeerror(op, l, r) Tree l, r; {
+void typeerror(int op, sTree_t l, sTree_t r)
+{
 	int i;
-	static struct { Opcode op; char *name; } ops[] = {
-		ASGN, "=",	INDIR, "*",	NEG,  "-",
-		ADD,  "+",	SUB,   "-",	LSH,  "<<",
-		MOD,  "%",	RSH,   ">>",	BAND, "&",
-		BCOM, "~",	BOR,   "|",	BXOR, "^",
-		DIV,  "/",	MUL,   "*",	EQ,   "==",
-		GE,   ">=",	GT,    ">",	LE,   "<=",
-		LT,   "<",	NE,    "!=",	AND,  "&&",
-		NOT,  "!",	OR,    "||",	COND, "?:",
-		0, 0
+	static struct { eOpcode_t op; char *name; } ops[] = {
+       { ASGN, "="  }, { INDIR, "*"  }, { NEG,  "-"  },
+       { ADD,  "+"  }, { SUB,   "-"  }, { LSH,  "<<" },
+       { MOD,  "%"  }, { RSH,   ">>" }, { BAND, "&"  },
+       { BCOM, "~"  }, { BOR,   "|"  }, { BXOR, "^"  },
+       { DIV,  "/"  }, { MUL,   "*"  }, { EQ,   "==" },
+       { GE,   ">=" }, { GT,    ">"  }, { LE,   "<=" },
+       { LT,   "<"  }, { NE,    "!=" }, { AND,  "&&" },
+       { NOT,  "!"  }, { OR,    "||" }, { COND, "?:" },
+       { 0, NULL}
 	};
 
 	op = generic(op);

@@ -1,67 +1,36 @@
 /* C compiler: error reporting */
 
+#include <stdlib.h>
+
 #include "c.h"
 
 int errcnt;		/* number of compilation errors */
 int errlimit = 20;	/* compilation error limit */
 int wflag;		/* != 0 to suppress warning messages */
 
-dclproto(static void printtoken,(void));
+static void printtoken(void);
 
 /* error - issue error message */
-/*
 void error(char *fmt, ...) 
 {
-	va_list ap;
+   va_list ap;
 
-	va_init(ap, fmt);
-	if (firstfile != file && firstfile && *firstfile)
-		fprint(2, "%s: ", firstfile);		// omit
-	fprint(2, "%w: ", &src);
-	vfprint(2, fmt, ap);
-	if (++errcnt >= errlimit) 
-	{
-		errcnt = -1;
-		error("too many errors\n");
-		exit(1);
-	}
-	va_end(ap);
-}
-*/
+   va_init(ap, fmt);
+   if (firstfile != file && firstfile && *firstfile)
+      fprint(2, "%s: ", firstfile);		// omit
 
-
-// Actuellement:
-// =============
-// main.c:203: syntax error; found `void' expecting `;'
-//
-// Ce que l'on veut:
-// =================
-// C:\sources\pc\Tools\Oric\rcc16\LCC1.9\C\Error.c(62) : error C2054: expected '(' to follow 's'
-
-void error(char *fmt, ...) 
-{
-	va_list ap;
-
-	va_init(ap, fmt);
-	if (firstfile != file && firstfile && *firstfile)
-	{
-		fprint(2, "%s: ", firstfile);		// omit
-	}
-	fprint(2, "%w: ", &src);
-	vfprint(2, fmt, ap);
-	if (++errcnt >= errlimit) 
-	{
-		errcnt = -1;
-		error("too many errors\n");
-		exit(1);
-	}
-	va_end(ap);
+   fprint(2, "%w: ", &src);
+   vfprint(2, fmt, ap);
+	
+   if (++errcnt >= errlimit) 
+   {
+      errcnt = -1;
+      error("too many errors\n");
+      exit(1);
+   }
+   va_end(ap);
 }
 
-
-
-
-//
 /* expect - advance if t is tok, otherwise issue message */
 int expect(tok) 
 {
